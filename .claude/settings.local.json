@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "Bash(mv \"C:\\\\Users\\\\Timel\\\\Desktop\\\\NovaTrust\\\\.tmp-clone\\\\.git\" \"C:\\\\Users\\\\Timel\\\\Desktop\\\\NovaTrust\\\\.git\")",
+      "Bash(rmdir \"C:\\\\Users\\\\Timel\\\\Desktop\\\\NovaTrust\\\\.tmp-clone\")"
+    ]
+  }
+}
