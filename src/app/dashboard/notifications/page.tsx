@@ -30,7 +30,7 @@ const items = [
     icon: Mail,
     color: "text-muted-foreground",
     title: "Security advisory",
-    body: "Nova Trust will never call to ask for your one-time codes.",
+    body: "Paxnova Trust will never call to ask for your one-time codes.",
     age: "1 week ago",
   },
 ];

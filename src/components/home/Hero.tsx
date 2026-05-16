@@ -176,7 +176,7 @@ export function Hero() {
                     className="font-display text-xs font-semibold uppercase tracking-[0.2em]"
                     style={{ color: card.accent }}
                   >
-                    Nova Trust
+                    Paxnova Trust
                   </span>
                 </div>
 

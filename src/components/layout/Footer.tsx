@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowRight, AtSign, Briefcase, Camera, Play } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,12 @@ const socialIcons = [
 ];
 
 export function Footer() {
+  const pathname = usePathname();
+  const isAppRoute =
+    pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin");
   const [email, setEmail] = useState("");
+
+  if (isAppRoute) return null;
 
   const onSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +42,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-2 gap-10 lg:grid-cols-6">
           <div className="col-span-2 lg:col-span-2">
-            <Logo variant="mono-light" size={28} />
+            <Logo variant="mono-light" size={32} />
             <p className="mt-4 max-w-sm text-sm text-white/70">
               {siteConfig.description}
             </p>

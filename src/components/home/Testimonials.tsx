@@ -6,7 +6,7 @@ import { Star } from "lucide-react";
 const quotes = [
   {
     quote:
-      "Nova Trust replaced three accounts and two apps for me. The savings APY alone has earned me more than my old bank did in a decade.",
+      "Paxnova Trust replaced three accounts and two apps for me. The savings APY alone has earned me more than my old bank did in a decade.",
     name: "Priya M.",
     role: "Product designer, Brooklyn",
     initials: "PM",

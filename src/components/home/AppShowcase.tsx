@@ -1,7 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Apple, Smartphone, Sparkles, Wifi, Battery, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Sparkles, Wifi, Battery, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import {
+  AppleStoreBadge,
+  GooglePlayBadge,
+} from "@/app/download/_components/StoreBadges";
 
 const features = [
   {
@@ -10,7 +14,7 @@ const features = [
   },
   {
     title: "Instant transfers",
-    body: "Move money between Nova Trust accounts in under a second, 24/7.",
+    body: "Move money between Paxnova Trust accounts in under a second, 24/7.",
   },
   {
     title: "Card controls",
@@ -24,7 +28,7 @@ export function AppShowcase() {
       <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
         <div className="order-2 lg:order-1">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-500">
-            The Nova Trust app
+            The Paxnova Trust app
           </p>
           <h2 className="mt-2 font-display text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
             Your bank on the device you trust most.
@@ -50,16 +54,8 @@ export function AppShowcase() {
           </ul>
 
           <div className="mt-10 flex flex-wrap gap-3">
-            <StoreBadge
-              icon={<Apple className="size-5" />}
-              line1="Download on the"
-              line2="App Store"
-            />
-            <StoreBadge
-              icon={<Smartphone className="size-5" />}
-              line1="Get it on"
-              line2="Google Play"
-            />
+            <AppleStoreBadge />
+            <GooglePlayBadge />
           </div>
         </div>
 
@@ -68,33 +64,6 @@ export function AppShowcase() {
         </div>
       </div>
     </section>
-  );
-}
-
-function StoreBadge({
-  icon,
-  line1,
-  line2,
-}: {
-  icon: React.ReactNode;
-  line1: string;
-  line2: string;
-}) {
-  return (
-    <button
-      type="button"
-      className="inline-flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-2.5 text-left transition hover:-translate-y-0.5 hover:shadow-soft"
-    >
-      <span className="text-foreground">{icon}</span>
-      <span>
-        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">
-          {line1}
-        </span>
-        <span className="block font-display text-base font-semibold tracking-tight">
-          {line2}
-        </span>
-      </span>
-    </button>
   );
 }
 

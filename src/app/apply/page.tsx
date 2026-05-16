@@ -26,7 +26,7 @@ const PRODUCTS: Record<
     openingMin: 0,
   },
   mortgage: {
-    label: "Nova Mortgage Pre-approval",
+    label: "Paxnova Mortgage Pre-approval",
     tagline: "Pre-approved in 8 minutes, closed in 21 days.",
     openingMin: 0,
   },
@@ -81,11 +81,14 @@ export default async function ApplyPage(props: {
             Application
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Takes about 3 minutes. We&apos;ll email you the next step.
+            {user
+              ? "We have your identity on file — this'll be quick."
+              : "Takes about 5 minutes. Federal law requires us to collect this information to verify your identity."}
           </p>
           <div className="mt-6">
             <ApplyForm
               defaultProduct={selected}
+              isLoggedIn={Boolean(user)}
               prefill={
                 user
                   ? {
@@ -98,8 +101,8 @@ export default async function ApplyPage(props: {
             />
           </div>
           <p className="mt-6 text-xs text-muted-foreground">
-            By submitting you authorize Nova Trust Bank to verify the information
-            you provide. See our{" "}
+            By submitting, you authorize Paxnova Trust Bank to verify the
+            information you provide. See our{" "}
             <Link href="/about" className="text-violet-500 hover:underline">
               privacy notice
             </Link>{" "}

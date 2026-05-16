@@ -1,31 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MapPin, Search } from "lucide-react";
-import { primaryNav } from "@/lib/site";
+import { LogOut, Search } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
-import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { MobileMenu } from "@/components/layout/MobileMenu";
+import { logoutAction } from "@/app/actions/auth";
+import { useSessionUser } from "@/lib/useSessionUser";
+import { ProfileButton } from "@/components/layout/ProfileButton";
 
 export function Header() {
-  const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+  const isAppRoute =
+    pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin");
 
+  const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const { user, loaded } = useSessionUser();
+
+  if (isAppRoute) return null;
 
   return (
     <header
@@ -39,67 +42,17 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          aria-label="Nova Trust home"
+          aria-label="Paxnova Trust home"
           className="ring-focus rounded-md"
         >
-          <Logo variant="full" size={28} />
+          <Logo variant="full" size={32} />
         </Link>
 
-        <NavigationMenu className="hidden lg:flex">
-          <NavigationMenuList>
-            {primaryNav.map((section) => (
-              <NavigationMenuItem key={section.label}>
-                <NavigationMenuTrigger className="bg-transparent">
-                  {section.label}
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <div className="grid w-[640px] grid-cols-2 gap-6 p-6">
-                    {section.groups.map((group) => (
-                      <div key={group.heading}>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          {group.heading}
-                        </p>
-                        <ul className="space-y-1.5">
-                          {group.items.map((item) => (
-                            <li key={item.title}>
-                              <Link
-                                href={item.href}
-                                className="block rounded-lg p-3 transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-                              >
-                                <div className="font-medium">{item.title}</div>
-                                <p className="text-sm text-muted-foreground">
-                                  {item.description}
-                                </p>
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            ))}
-          </NavigationMenuList>
-        </NavigationMenu>
-
         <div className="flex items-center gap-1.5">
-          <Link
-            href="/contact"
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "hidden md:inline-flex"
-            )}
-          >
-            <MapPin className="size-4" />
-            Find a branch
-          </Link>
-
           <Button
             variant="ghost"
             size="icon"
             aria-label="Search"
-            className="hidden md:inline-flex"
             onClick={() => {
               window.dispatchEvent(new CustomEvent("open-command-palette"));
             }}
@@ -107,14 +60,28 @@ export function Header() {
             <Search className="size-5" />
           </Button>
 
-          <ThemeToggle className="hidden md:inline-flex" />
+          {loaded && user && <ProfileButton user={user} />}
 
-          <Link
-            href="/signin"
-            className="hidden h-9 items-center justify-center rounded-full bg-violet-500 px-5 text-sm font-medium text-white shadow-soft transition hover:bg-violet-600 ring-focus md:inline-flex"
-          >
-            Sign in
-          </Link>
+          <ThemeToggle />
+
+          {loaded && user ? (
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 text-sm font-medium hover:bg-muted"
+              >
+                <LogOut className="size-4" />
+                Sign out
+              </button>
+            </form>
+          ) : (
+            <Link
+              href="/signin"
+              className="hidden h-9 items-center justify-center rounded-full bg-violet-500 px-5 text-sm font-medium text-white shadow-soft transition hover:bg-violet-600 ring-focus md:inline-flex"
+            >
+              Sign in
+            </Link>
+          )}
 
           <MobileMenu />
         </div>

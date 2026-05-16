@@ -91,11 +91,11 @@ export function CommandPalette() {
       >
         <DialogTitle className="sr-only">Command palette</DialogTitle>
         <DialogDescription className="sr-only">
-          Search and navigate Nova Trust Bank.
+          Search and navigate Paxnova Trust Bank.
         </DialogDescription>
         <Command label="Command palette" className="bg-card">
           <CommandInput
-            placeholder="Search Nova Trust…"
+            placeholder="Search Paxnova Trust…"
             className="w-full border-b border-border bg-transparent px-4 py-3 text-base outline-none placeholder:text-muted-foreground"
           />
           <CommandList className="max-h-[420px] overflow-auto p-2">

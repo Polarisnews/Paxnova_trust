@@ -7,6 +7,7 @@ import {
   FileCheck,
   LayoutDashboard,
   LogOut,
+  Send,
   ShieldAlert,
   Users,
   Wallet,
@@ -21,6 +22,8 @@ const nav = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/accounts", label: "Accounts", icon: Wallet },
   { href: "/admin/applications", label: "Applications", icon: FileCheck },
+  { href: "/admin/cards/applications", label: "Card applications", icon: CreditCard },
+  { href: "/admin/wires", label: "Wires", icon: Send },
   { href: "/admin/cards", label: "Cards", icon: CreditCard },
 ];
 
@@ -34,10 +37,10 @@ export function AdminShell({
   const pathname = usePathname();
 
   return (
-    <div className="-mt-16 flex min-h-dvh bg-canvas dark:bg-background">
+    <div className="flex min-h-dvh bg-canvas dark:bg-background">
       <aside className="sticky top-0 z-40 hidden h-dvh w-64 shrink-0 flex-col border-r border-border bg-navy-900 text-white lg:flex">
         <div className="flex h-16 items-center border-b border-white/10 px-5">
-          <Logo variant="mono-light" size={22} />
+          <Logo variant="mono-light" size={25} />
         </div>
         <div className="mx-3 mt-4 inline-flex items-center gap-2 rounded-full bg-gold-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold-300">
           <ShieldAlert className="size-3" />
@@ -97,10 +100,10 @@ export function AdminShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6 lg:px-8">
           <div className="lg:hidden">
-            <Logo variant="mark" size={26} />
+            <Logo variant="mark" size={29} />
           </div>
           <p className="hidden text-sm text-muted-foreground lg:block">
-            Operations console
+            Admin Dashboard
           </p>
           <ThemeToggle />
         </header>

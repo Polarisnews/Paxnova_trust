@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
@@ -45,15 +46,19 @@ export default async function AccountDetail(props: {
           {account.type === "credit" ? "Current balance" : "Available balance"}
         </p>
         <p className="mt-1 font-display text-4xl font-semibold tracking-tight">
-          {currency(account.balance)}
+          {currency(account.balance, account.currency || "USD")}
+        </p>
+        <p className="mt-1 text-xs uppercase tracking-wider text-white/50">
+          {account.currency || "USD"}
         </p>
         {account.apy != null && account.type !== "credit" && (
           <p className="mt-2 text-sm text-gold-300">Earning {account.apy}% APY</p>
         )}
         {account.creditLimit != null && (
           <p className="mt-2 text-sm text-white/70">
-            Credit limit {currency(account.creditLimit)} · Available{" "}
-            {currency(account.creditLimit + account.balance)}
+            Credit limit {currency(account.creditLimit, account.currency || "USD")} ·
+            Available{" "}
+            {currency(account.creditLimit + account.balance, account.currency || "USD")}
           </p>
         )}
       </div>
@@ -69,41 +74,48 @@ export default async function AccountDetail(props: {
         ) : (
           <ul className="divide-y divide-border">
             {tx.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-4 px-6 py-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full ${
-                      t.type === "credit"
-                        ? "bg-success/15 text-success"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {t.type === "credit" ? (
-                      <ArrowDownLeft className="size-4" />
-                    ) : (
-                      <ArrowUpRight className="size-4" />
-                    )}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{t.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.category ?? "—"} · {formatRelative(t.createdAt)}
+              <li key={t.id}>
+                <Link
+                  href={`/dashboard/transactions/${t.id}`}
+                  className="flex items-center justify-between gap-4 px-6 py-4 transition hover:bg-muted/50"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span
+                      className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full ${
+                        t.type === "credit"
+                          ? "bg-success/15 text-success"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {t.type === "credit" ? (
+                        <ArrowDownLeft className="size-4" />
+                      ) : (
+                        <ArrowUpRight className="size-4" />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {t.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.category ?? "—"} · {formatRelative(t.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p
+                      className={`font-mono text-sm font-semibold ${
+                        t.type === "credit" ? "text-success" : ""
+                      }`}
+                    >
+                      {t.type === "credit" ? "+" : "−"}
+                      {currency(t.amount, account.currency || "USD")}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Bal {currency(t.balanceAfter, account.currency || "USD")}
                     </p>
                   </div>
-                </div>
-                <div className="text-right">
-                  <p
-                    className={`font-mono text-sm font-semibold ${
-                      t.type === "credit" ? "text-success" : ""
-                    }`}
-                  >
-                    {t.type === "credit" ? "+" : "−"}
-                    {currency(t.amount)}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Bal {currency(t.balanceAfter)}
-                  </p>
-                </div>
+                </Link>
               </li>
             ))}
           </ul>

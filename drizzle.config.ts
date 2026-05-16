@@ -5,7 +5,7 @@ export default {
   out: "./drizzle",
   dialect: "sqlite",
   dbCredentials: {
-    url: process.env.DB_PATH ?? "./novatrust.db",
+    url: process.env.DB_PATH ?? "./paxnovatrust.db",
   },
   verbose: true,
 } satisfies Config;

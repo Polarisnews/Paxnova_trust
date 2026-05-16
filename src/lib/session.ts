@@ -9,24 +9,47 @@ export type SessionData = {
   firstName?: string;
 };
 
-const password =
-  process.env.SESSION_SECRET ??
-  "novatrust-fallback-secret-please-set-SESSION_SECRET-in-env-32chars";
+const isProd = process.env.NODE_ENV === "production";
 
-if (password.length < 32) {
+const password = process.env.SESSION_SECRET;
+
+if (isProd && !password) {
+  throw new Error(
+    "SESSION_SECRET is required in production. Generate one with: openssl rand -base64 48"
+  );
+}
+
+const effectivePassword =
+  password ??
+  "paxnovatrust-dev-only-fallback-rotate-before-deploy-32+chars";
+
+if (effectivePassword.length < 32) {
   throw new Error("SESSION_SECRET must be at least 32 characters long.");
 }
 
+// __Host- prefix locks the cookie to the exact origin and forbids the Domain
+// attribute, eliminating subdomain hijack risk. It requires secure=true and
+// path=/, which we already set. Browsers reject __Host- cookies over HTTP, so
+// we only use the prefix in production where TLS is mandatory.
+const COOKIE_NAME = isProd
+  ? "__Host-paxnovatrust-session"
+  : "paxnovatrust-session";
+
+export const SESSION_COOKIE_NAME = COOKIE_NAME;
+
 export const sessionOptions: SessionOptions = {
-  password,
-  cookieName: "novatrust-session",
+  password: effectivePassword,
+  cookieName: COOKIE_NAME,
   cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
+    secure: isProd,
     httpOnly: true,
-    sameSite: "lax",
+    // strict eliminates CSRF risk on top-level navigations.
+    // Demo flows like OAuth callbacks would need lax — we have none.
+    sameSite: isProd ? "strict" : "lax",
     path: "/",
   },
-  ttl: 60 * 60 * 24 * 7,
+  // 24h hard expiry — banking sessions should not live for a week.
+  ttl: 60 * 60 * 24,
 };
 
 export async function getSession(): Promise<IronSession<SessionData>> {

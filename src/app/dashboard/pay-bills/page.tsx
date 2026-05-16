@@ -42,6 +42,7 @@ export default async function PayBillsPage() {
           name: a.name,
           balance: a.balance,
           accountNumber: a.accountNumber,
+          currency: a.currency || "USD",
         }))}
         payees={userPayees.map((p) => ({
           id: p.id,
@@ -54,6 +55,7 @@ export default async function PayBillsPage() {
           id: s.payment.id,
           payeeName: s.payee?.name ?? "—",
           accountName: s.account?.name ?? "—",
+          accountCurrency: s.account?.currency || "USD",
           amount: s.payment.amount,
           scheduledDate:
             typeof s.payment.scheduledDate === "number"

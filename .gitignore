@@ -45,3 +45,6 @@ next-env.d.ts
 *.db-journal
 *.db-wal
 *.db-shm
+
+# uploaded user documents (KYC IDs, business formation docs, etc.)
+/uploads/

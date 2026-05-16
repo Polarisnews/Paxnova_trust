@@ -2,12 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(git clone *)",
-      "Bash(mv \"C:\\\\Users\\\\Timel\\\\Desktop\\\\NovaTrust\\\\.tmp-clone\\\\.git\" \"C:\\\\Users\\\\Timel\\\\Desktop\\\\NovaTrust\\\\.git\")",
-      "Bash(rmdir \"C:\\\\Users\\\\Timel\\\\Desktop\\\\NovaTrust\\\\.tmp-clone\")",
+      "Bash(mv \"C:\\\\Users\\\\Timel\\\\Desktop\\\\PaxnovaTrust\\\\.tmp-clone\\\\.git\" \"C:\\\\Users\\\\Timel\\\\Desktop\\\\PaxnovaTrust\\\\.git\")",
+      "Bash(rmdir \"C:\\\\Users\\\\Timel\\\\Desktop\\\\PaxnovaTrust\\\\.tmp-clone\")",
       "Bash(npx --yes create-next-app@latest . --typescript --tailwind --app --src-dir --import-alias \"@/*\" --no-eslint --no-turbopack --use-npm --yes)",
-      "Bash(npx --yes create-next-app@latest nova-trust-bank --typescript --tailwind --app --src-dir --import-alias \"@/*\" --no-eslint --no-turbopack --use-npm --yes)",
+      "Bash(npx --yes create-next-app@latest paxnova-trust-bank --typescript --tailwind --app --src-dir --import-alias \"@/*\" --no-eslint --no-turbopack --use-npm --yes)",
       "Bash(shopt -s dotglob)",
-      "Bash(mv nova-trust-bank/* .)",
+      "Bash(mv paxnova-trust-bank/* .)",
       "Bash(npm install *)",
       "Bash(npx --yes shadcn@latest init --yes -d --base-color neutral)",
       "Bash(npx --yes shadcn@latest init --help)",
@@ -20,7 +20,20 @@
       "Bash(npx drizzle-kit *)",
       "Bash(npx tsx *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "PowerShell(gh *)",
+      "PowerShell(git config *)",
+      "WebSearch",
+      "Bash(echo \"EXIT_CODE=$?\")",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(awk NR>=1 && NR<=5 { print NR\": \"length\\($0\\)\" chars\" } *)",
+      "Bash(xargs grep -l \"nodemailer\\\\|resend\\\\|react-email\\\\|transporter\\\\|sendMail\\\\|RESEND\")",
+      "Bash(powershell -NoProfile -Command ' *)",
+      "Bash(powershell *)",
+      "Bash(git remote *)",
+      "Bash(git check-ignore *)"
     ]
   }
 }

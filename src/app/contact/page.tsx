@@ -54,8 +54,8 @@ export default function ContactPage() {
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="font-display text-lg font-semibold">Talk to us</h3>
               <dl className="mt-4 space-y-3 text-sm">
-                <Item icon={Phone} label="Customer service" value="1-800-NOVA-TRUST" />
-                <Item icon={Mail} label="Email" value="hello@novatrust.example" />
+                <Item icon={Phone} label="Customer service" value="1-800-PAXNOVA-1" />
+                <Item icon={Mail} label="Email" value="hello@paxnovatrust.com" />
                 <Item icon={MapPin} label="Headquarters" value="200 West St, 14th Floor, New York, NY 10282" />
                 <Item icon={Clock} label="Hours" value="Phone: 24/7 · Branches: M-Sat 9-6" />
               </dl>

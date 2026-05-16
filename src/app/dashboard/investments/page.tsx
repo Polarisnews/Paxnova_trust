@@ -14,7 +14,7 @@ export default async function InvestmentsPage() {
           <TrendingUp className="size-5" />
         </span>
         <h1 className="mt-4 font-display text-3xl font-semibold tracking-tight">
-          Wealth, by Nova Trust
+          Wealth, by Paxnova Trust
         </h1>
         <p className="mt-2 max-w-md mx-auto text-sm text-muted-foreground">
           Managed portfolios and self-directed investing are launching in Q3 2026.

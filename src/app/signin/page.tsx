@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Fingerprint, Lock, ShieldCheck } from "lucide-react";
+import { Fingerprint, ShieldCheck } from "lucide-react";
 import { requireGuest } from "@/lib/auth";
 import { SignInForm } from "./SignInForm";
 
@@ -21,7 +21,7 @@ export default async function SignInPage(props: {
               Welcome back
             </h1>
             <p className="text-sm text-muted-foreground">
-              Sign in to your Nova Trust account.
+              Sign in to your Paxnova Trust account.
             </p>
           </div>
 
@@ -44,7 +44,7 @@ export default async function SignInPage(props: {
           </button>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            New to Nova Trust?{" "}
+            New to Paxnova Trust?{" "}
             <Link
               href="/signup"
               className="font-medium text-violet-500 hover:text-violet-600"
@@ -57,11 +57,11 @@ export default async function SignInPage(props: {
         <div className="mt-6 rounded-xl bg-muted/60 p-4 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">Demo accounts</p>
           <p className="mt-1">
-            User · <code className="font-mono">demo@nova.test</code> /{" "}
+            User · <code className="font-mono">demo</code> /{" "}
             <code className="font-mono">Demo123!</code>
           </p>
           <p className="mt-0.5">
-            Admin · <code className="font-mono">admin@nova.test</code> /{" "}
+            Admin · <code className="font-mono">admin</code> /{" "}
             <code className="font-mono">Admin123!</code>
           </p>
         </div>
@@ -74,25 +74,11 @@ export default async function SignInPage(props: {
             Security tips
           </h2>
           <ul className="mt-4 space-y-3 text-sm text-white/80">
-            <li>• Nova Trust will never call to ask for your password or one-time codes.</li>
-            <li>• Always confirm the URL begins with <code className="font-mono text-gold-300">novatrust.com</code> before signing in.</li>
+            <li>• Paxnova Trust will never call to ask for your password or one-time codes.</li>
+            <li>• Always confirm the URL begins with <code className="font-mono text-gold-300">paxnovatrust.com</code> before signing in.</li>
             <li>• Enable biometric and device-bound passkeys in Security settings.</li>
             <li>• If something feels off, freeze your cards from the dashboard immediately.</li>
           </ul>
-        </div>
-
-        <div className="rounded-2xl border border-border p-6">
-          <Lock className="size-5 text-violet-500" />
-          <h3 className="mt-2 font-semibold">Forgot your password?</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Reset it using your registered email and a one-time code sent to your phone.
-          </p>
-          <Link
-            href="/contact"
-            className="mt-3 inline-flex text-sm font-medium text-violet-500 hover:text-violet-600"
-          >
-            Start password reset →
-          </Link>
         </div>
       </aside>
     </div>

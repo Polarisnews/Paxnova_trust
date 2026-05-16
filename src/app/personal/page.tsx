@@ -20,7 +20,7 @@ export default function PersonalPage() {
           </h1>
           <p className="mt-5 max-w-2xl text-white/75">
             Whether you&apos;re saving for a first home or moving family wealth across
-            generations — every Nova Trust product is built around the same idea:
+            generations — every Paxnova Trust product is built around the same idea:
             transparent, fast, and human when it counts.
           </p>
         </div>

@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Menu } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { LogOut, Menu, User } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -13,11 +12,13 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/Logo";
-import { primaryNav } from "@/lib/site";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { useSessionUser } from "@/lib/useSessionUser";
+import { logoutAction } from "@/app/actions/auth";
 
 export function MobileMenu() {
   const [open, setOpen] = useState(false);
+  const { user, loaded } = useSessionUser();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -27,7 +28,7 @@ export function MobileMenu() {
             variant="ghost"
             size="icon"
             aria-label="Open menu"
-            className="lg:hidden"
+            className="md:hidden"
           >
             <Menu className="size-5" />
           </Button>
@@ -36,75 +37,51 @@ export function MobileMenu() {
       <SheetContent side="right" className="w-full sm:max-w-md p-0">
         <SheetHeader className="border-b border-border px-6 py-4">
           <SheetTitle className="flex items-center justify-between">
-            <Logo variant="full" size={24} />
+            <Logo variant="full" size={27} />
             <ThemeToggle />
           </SheetTitle>
         </SheetHeader>
 
-        <AnimatePresence>
-          {open && (
-            <nav className="flex flex-col px-6 py-6">
-              {primaryNav.map((section, idx) => (
-                <motion.div
-                  key={section.label}
-                  initial={{ opacity: 0, x: 16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{
-                    delay: idx * 0.04,
-                    duration: 0.32,
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
-                  className="border-b border-border last:border-b-0"
-                >
-                  <Link
-                    href={section.href}
-                    onClick={() => setOpen(false)}
-                    className="block py-4 text-2xl font-display font-semibold tracking-tight"
-                  >
-                    {section.label}
-                  </Link>
-                  <div className="space-y-1 pb-4 pl-1">
-                    {section.groups
-                      .flatMap((g) => g.items)
-                      .slice(0, 3)
-                      .map((item) => (
-                        <Link
-                          key={item.title}
-                          href={item.href}
-                          onClick={() => setOpen(false)}
-                          className="block py-1.5 text-sm text-muted-foreground hover:text-foreground"
-                        >
-                          {item.title}
-                        </Link>
-                      ))}
-                  </div>
-                </motion.div>
-              ))}
-
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.32 }}
-                className="mt-6 flex flex-col gap-3"
+        <div className="flex flex-col gap-4 px-6 py-6">
+          {loaded && user ? (
+            <>
+              <Link
+                href="/dashboard"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-violet-500 px-5 text-sm font-semibold text-white shadow-soft hover:bg-violet-600"
               >
-                <Link
-                  href="/signin"
-                  onClick={() => setOpen(false)}
-                  className="inline-flex h-11 items-center justify-center rounded-full bg-violet-500 px-5 text-sm font-semibold text-white shadow-soft hover:bg-violet-600 ring-focus"
+                <User className="size-4" />
+                Go to dashboard
+              </Link>
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-5 text-sm font-semibold hover:bg-muted"
                 >
-                  Sign in
-                </Link>
-                <Link
-                  href="/personal"
-                  onClick={() => setOpen(false)}
-                  className="inline-flex h-11 items-center justify-center rounded-full border border-border bg-background px-5 text-sm font-semibold hover:bg-muted ring-focus"
-                >
-                  Open an account
-                </Link>
-              </motion.div>
-            </nav>
+                  <LogOut className="size-4" />
+                  Sign out
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/signin"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-11 items-center justify-center rounded-full bg-violet-500 px-5 text-sm font-semibold text-white shadow-soft hover:bg-violet-600"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/signup"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-border bg-background px-5 text-sm font-semibold hover:bg-muted"
+              >
+                Open an account
+              </Link>
+            </>
           )}
-        </AnimatePresence>
+        </div>
       </SheetContent>
     </Sheet>
   );

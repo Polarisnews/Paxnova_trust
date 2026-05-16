@@ -198,7 +198,7 @@ export const PRODUCTS: Record<string, ProductDetail> = {
     faqs: [
       {
         q: "Are you a fiduciary?",
-        a: "Yes. Nova Trust Wealth Advisors LLC is a fiduciary at all times, on every account.",
+        a: "Yes. Paxnova Trust Wealth Advisors LLC is a fiduciary at all times, on every account.",
       },
     ],
   },

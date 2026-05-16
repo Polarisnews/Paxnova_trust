@@ -1,8 +1,21 @@
 import Link from "next/link";
-import { count, eq, sql } from "drizzle-orm";
-import { ArrowUpRight, FileCheck, TrendingUp, Users, Wallet } from "lucide-react";
+import { and, count, eq, sql } from "drizzle-orm";
+import {
+  ArrowUpRight,
+  FileCheck,
+  Send,
+  TrendingUp,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { db } from "@/db";
-import { accounts, applications, transactions, users } from "@/db/schema";
+import {
+  accounts,
+  applications,
+  scheduledWires,
+  transactions,
+  users,
+} from "@/db/schema";
 import { currency } from "@/lib/format";
 
 export default async function AdminOverview() {
@@ -13,6 +26,12 @@ export default async function AdminOverview() {
       .select({ c: count() })
       .from(applications)
       .where(eq(applications.status, "pending"))
+      .get()?.c ?? 0;
+  const pendingWires =
+    db
+      .select({ c: count() })
+      .from(scheduledWires)
+      .where(eq(scheduledWires.status, "scheduled"))
       .get()?.c ?? 0;
 
   const totalAssetsRow = db
@@ -64,9 +83,19 @@ export default async function AdminOverview() {
           accent={pendingApps > 0}
         />
         <StatCard
+          icon={Send}
+          label="Wires awaiting review"
+          value={String(pendingWires)}
+          href="/admin/wires"
+          accent={pendingWires > 0}
+        />
+        <StatCard
           icon={TrendingUp}
           label="Deposits under management"
-          value={currency(totalAssets, { maximumFractionDigits: 0 })}
+          value={currency(totalAssets, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+          })}
         />
       </section>
 

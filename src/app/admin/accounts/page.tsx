@@ -4,6 +4,33 @@ import { accounts, users } from "@/db/schema";
 import { currency, maskAccount } from "@/lib/format";
 import { AccountAdminActions } from "./AccountAdminActions";
 
+const STATUS_PILL: Record<string, { label: string; cls: string }> = {
+  active: {
+    label: "Active",
+    cls: "bg-success/15 text-success",
+  },
+  frozen: {
+    label: "Frozen",
+    cls: "bg-orange-500/15 text-orange-500",
+  },
+  code: {
+    label: "Code",
+    cls: "bg-violet-500/15 text-violet-500",
+  },
+  custom: {
+    label: "Custom",
+    cls: "bg-gold-500/15 text-gold-700 dark:text-gold-300",
+  },
+  pending: {
+    label: "Pending",
+    cls: "bg-muted text-muted-foreground",
+  },
+  closed: {
+    label: "Closed",
+    cls: "bg-danger/15 text-danger",
+  },
+};
+
 export default async function AdminAccounts() {
   const list = db
     .select({ account: accounts, owner: users })
@@ -15,10 +42,16 @@ export default async function AdminAccounts() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <header>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Operations</p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Accounts</h1>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          Operations
+        </p>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">
+          Accounts
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Freeze suspicious accounts and post manual balance adjustments. Each adjustment writes a ledger entry.
+          Change an account&apos;s status, mint compliance codes, or post
+          manual ledger entries. Status changes take effect on the user&apos;s
+          next transfer attempt.
         </p>
       </header>
 
@@ -35,51 +68,76 @@ export default async function AdminAccounts() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {list.map(({ account, owner }) => (
-              <tr key={account.id}>
-                <td className="px-4 py-3">
-                  <p className="font-medium">{account.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {maskAccount(account.accountNumber)}
-                  </p>
-                </td>
-                <td className="px-4 py-3">
-                  {owner ? (
-                    <>
-                      <p className="font-medium">
-                        {owner.firstName} {owner.lastName}
+            {list.map(({ account, owner }) => {
+              const pill = STATUS_PILL[account.status] ?? STATUS_PILL.active;
+              return (
+                <tr key={account.id}>
+                  <td className="px-4 py-3">
+                    <p className="font-medium">{account.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {maskAccount(account.accountNumber)}
+                    </p>
+                  </td>
+                  <td className="px-4 py-3">
+                    {owner ? (
+                      <>
+                        <p className="font-medium">
+                          {owner.firstName} {owner.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {owner.email}
+                        </p>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 capitalize">{account.type}</td>
+                  <td className="px-4 py-3 text-right">
+                    <p className="font-mono">
+                      {currency(account.balance, account.currency || "USD")}
+                    </p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {account.currency || "USD"}
+                    </p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${pill.cls}`}
+                    >
+                      {pill.label}
+                    </span>
+                    {account.status === "code" && (account.tcvCode || account.amlCode) && (
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {account.tcvCode ? "TCV ✓" : "TCV —"}
+                        {" · "}
+                        {account.amlCode ? "AML ✓" : "AML —"}
                       </p>
-                      <p className="text-xs text-muted-foreground">{owner.email}</p>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 capitalize">{account.type}</td>
-                <td className="px-4 py-3 text-right font-mono">
-                  {currency(account.balance)}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                      account.status === "active"
-                        ? "bg-success/15 text-success"
-                        : account.status === "frozen"
-                        ? "bg-violet-500/15 text-violet-500"
-                        : "bg-danger/15 text-danger"
-                    }`}
-                  >
-                    {account.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <AccountAdminActions
-                    accountId={account.id}
-                    status={account.status as "active" | "frozen" | "closed"}
-                  />
-                </td>
-              </tr>
-            ))}
+                    )}
+                    {account.status === "custom" && account.customMessage && (
+                      <p
+                        className="mt-1 max-w-[180px] truncate text-[10px] text-muted-foreground"
+                        title={account.customMessage}
+                      >
+                        {account.customMessage}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <AccountAdminActions
+                      accountId={account.id}
+                      accountName={account.name}
+                      accountType={account.type}
+                      status={account.status}
+                      tcvCode={account.tcvCode}
+                      amlCode={account.amlCode}
+                      customMessage={account.customMessage}
+                      currency={account.currency || "USD"}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

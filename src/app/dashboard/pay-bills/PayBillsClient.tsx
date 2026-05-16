@@ -13,7 +13,13 @@ import {
 } from "@/app/actions/banking";
 import { currency, formatDate, maskAccount } from "@/lib/format";
 
-type Account = { id: number; name: string; balance: number; accountNumber: string };
+type Account = {
+  id: number;
+  name: string;
+  balance: number;
+  accountNumber: string;
+  currency: string;
+};
 type Payee = {
   id: number;
   name: string;
@@ -25,6 +31,7 @@ type Scheduled = {
   id: number;
   payeeName: string;
   accountName: string;
+  accountCurrency: string;
   amount: number;
   scheduledDate: number;
   status: "scheduled" | "paid" | "cancelled" | "failed";
@@ -108,7 +115,7 @@ function SchedulePaymentForm({
           >
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.name} · {currency(a.balance)}
+                {a.name} · {currency(a.balance, a.currency)}
               </option>
             ))}
           </select>
@@ -178,7 +185,9 @@ function ScheduledList({ items }: { items: Scheduled[] }) {
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-mono text-sm font-semibold">{currency(p.amount)}</p>
+                <p className="font-mono text-sm font-semibold">
+                  {currency(p.amount, p.accountCurrency)}
+                </p>
                 <span
                   className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider ${
                     p.status === "scheduled"

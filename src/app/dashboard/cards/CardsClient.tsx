@@ -1,137 +1,258 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { Loader2, Lock, Snowflake, Sun } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Snowflake,
+  Sparkles,
+  Sun,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  setCardLimitAction,
-  toggleCardFreezeAction,
-  type ActionState,
-} from "@/app/actions/banking";
+import { CardArt } from "@/components/cards/CardArt";
 import { currency } from "@/lib/format";
+import {
+  revealCardDetailsAction,
+  setCardFrozenAction,
+  updateCardLimitsAction,
+  type CardActionState,
+  type RevealedCard,
+} from "@/app/actions/cards";
 
 type CardRow = {
   id: number;
-  brand: string;
+  network: "visa" | "mastercard" | "amex";
+  tier: "core" | "plus" | "black";
+  theme: "obsidian" | "aurora" | "sand" | "crimson";
   cardType: string;
   lastFour: string;
   cardHolder: string;
   expiryMonth: number;
   expiryYear: number;
   frozen: boolean;
+  status: "pending" | "active" | "frozen" | "closed";
   spendLimit: number;
+  dailyLimit: number;
+  txnLimit: number;
+  apr: number | null;
+  annualFee: number;
   accountName: string;
+  accountCurrency: string;
 };
 
-const initial: ActionState = { ok: false };
-
-const palettes: Record<string, string> = {
-  debit: "linear-gradient(135deg, #0A1A3C 0%, #1E3A6B 60%, #050B1F 100%)",
-  credit: "linear-gradient(135deg, #6E3FF3 0%, #4F22C7 60%, #2B1373 100%)",
-};
+const initial: CardActionState = { ok: false };
 
 export function CardsClient({ cards }: { cards: CardRow[] }) {
-  if (cards.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-        No cards on file yet.
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {cards.map((c) => (
-        <CardRowView key={c.id} card={c} />
+    <div className="space-y-8">
+      {cards.map((card) => (
+        <CardPanel key={card.id} card={card} />
       ))}
     </div>
   );
 }
 
-function CardRowView({ card }: { card: CardRow }) {
-  const [pending, start] = useTransition();
-  const [state, formAction, savingLimit] = useActionState(setCardLimitAction, initial);
+function CardPanel({ card }: { card: CardRow }) {
+  const router = useRouter();
+  const [revealed, setRevealed] = useState<RevealedCard | null>(null);
+  const [revealing, setRevealing] = useState(false);
+  const [frozenPending, startFrozen] = useTransition();
+  const [state, formAction, saving] = useActionState(
+    updateCardLimitsAction,
+    initial
+  );
 
   useEffect(() => {
     if (state.ok && state.message) toast.success(state.message);
-    else if (state.message && !state.ok && !state.fieldErrors) toast.error(state.message);
+    if (state.message && !state.ok && !state.fieldErrors) toast.error(state.message);
   }, [state]);
 
-  const onFreeze = () =>
-    start(async () => {
-      const res = await toggleCardFreezeAction(card.id);
-      if (res.ok && res.message) toast.success(res.message);
-      else if (res.message) toast.error(res.message);
+  // Auto re-mask after 30 seconds to avoid leaving secrets on screen.
+  useEffect(() => {
+    if (!revealed) return;
+    const t = setTimeout(() => setRevealed(null), 30_000);
+    return () => clearTimeout(t);
+  }, [revealed]);
+
+  async function reveal() {
+    setRevealing(true);
+    const res = await revealCardDetailsAction(card.id);
+    setRevealing(false);
+    if (!res.ok) {
+      toast.error(res.message);
+      return;
+    }
+    setRevealed(res.card);
+  }
+
+  function toggleFreeze() {
+    startFrozen(async () => {
+      const res = await setCardFrozenAction(card.id, !card.frozen);
+      if (res.ok) {
+        toast.success(res.message ?? "");
+        router.refresh();
+      } else {
+        toast.error(res.message ?? "Couldn't update card.");
+      }
     });
+  }
 
   return (
-    <div className="grid gap-5 rounded-2xl border border-border bg-card p-6 lg:grid-cols-[340px_1fr]">
-      <CardArt card={card} />
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="space-y-3">
+        <CardArt
+          network={card.network}
+          theme={card.theme}
+          cardHolder={card.cardHolder}
+          lastFour={card.lastFour}
+          pan={revealed?.pan ?? null}
+          expiryMonth={card.expiryMonth}
+          expiryYear={card.expiryYear}
+          revealed={Boolean(revealed)}
+          frozen={card.frozen}
+          size="lg"
+        />
+        {revealed && (
+          <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-3 text-xs">
+            <p className="font-semibold text-violet-600 dark:text-violet-300">
+              <Sparkles className="-mt-0.5 mr-1 inline size-3.5" />
+              Card details revealed — auto-hiding in 30 seconds.
+            </p>
+            <dl className="mt-2 grid gap-1 font-mono">
+              <Row label="CVV" value={revealed.cvv} />
+              <Row
+                label="Expiry"
+                value={`${String(revealed.expiryMonth).padStart(2, "0")}/${String(
+                  revealed.expiryYear
+                ).slice(-2)}`}
+              />
+              <Row label="Holder" value={revealed.cardHolder} />
+            </dl>
+          </div>
+        )}
+      </div>
 
-      <div className="space-y-5">
+      <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
         <div>
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            {card.cardType === "debit" ? "Debit" : "Credit"} card — linked to{" "}
             {card.accountName}
           </p>
-          <h2 className="mt-1 font-display text-xl font-semibold tracking-tight">
-            {card.brand.toUpperCase()} •••• {card.lastFour}
-          </h2>
+          <p className="font-display text-lg font-semibold tracking-tight">
+            {card.network === "visa"
+              ? "Apex Visa Core"
+              : card.network === "mastercard"
+              ? "Reserve Mastercard Plus"
+              : "Signature Amex Black"}
+          </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <dl className="grid gap-2 text-sm">
+          <Row label="Credit limit" value={currency(card.spendLimit, card.accountCurrency)} />
+          <Row label="APR" value={card.apr != null ? `${card.apr}%` : "—"} />
+          <Row label="Annual fee" value={currency(card.annualFee, card.accountCurrency)} />
+          <Row
+            label="Status"
+            value={card.frozen ? "Frozen" : card.status === "active" ? "Active" : card.status}
+          />
+        </dl>
+
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={onFreeze}
-            disabled={pending}
-            className={`inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-semibold transition ${
-              card.frozen
-                ? "bg-success text-white hover:bg-success/90"
-                : "bg-muted text-foreground hover:bg-muted/70"
-            } disabled:opacity-60`}
+            type="button"
+            onClick={revealed ? () => setRevealed(null) : reveal}
+            disabled={revealing}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-violet-500 px-4 text-xs font-semibold text-white hover:bg-violet-600 disabled:opacity-60"
           >
-            {pending ? (
+            {revealing ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : revealed ? (
+              <>
+                <EyeOff className="size-3.5" /> Hide
+              </>
+            ) : (
+              <>
+                <Eye className="size-3.5" /> Reveal details
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={toggleFreeze}
+            disabled={frozenPending}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-background px-4 text-xs font-medium hover:bg-muted disabled:opacity-60"
+          >
+            {frozenPending ? (
               <Loader2 className="size-3.5 animate-spin" />
             ) : card.frozen ? (
-              <Sun className="size-3.5" />
+              <>
+                <Sun className="size-3.5" /> Un-freeze
+              </>
             ) : (
-              <Snowflake className="size-3.5" />
+              <>
+                <Snowflake className="size-3.5" /> Freeze
+              </>
             )}
-            {card.frozen ? "Unfreeze card" : "Freeze card"}
-          </button>
-          <button
-            disabled
-            title="Coming soon"
-            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted/40 px-4 text-xs font-semibold text-muted-foreground"
-          >
-            <Lock className="size-3.5" />
-            Rotate virtual number
           </button>
         </div>
 
-        <form action={formAction} className="flex items-end gap-3">
+        <form action={formAction} className="space-y-3 border-t border-border pt-4">
           <input type="hidden" name="cardId" value={card.id} />
-          <div className="flex-1 space-y-1">
-            <Label htmlFor={`limit-${card.id}`}>Daily spend limit</Label>
-            <Input
-              id={`limit-${card.id}`}
-              name="spendLimit"
-              type="number"
-              step="50"
-              min="0"
-              defaultValue={card.spendLimit}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Currently {currency(card.spendLimit)}
-            </p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Spending limits
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor={`daily-${card.id}`} className="text-xs">
+                Daily limit
+              </Label>
+              <Input
+                id={`daily-${card.id}`}
+                name="dailyLimit"
+                type="number"
+                min={50}
+                step={50}
+                defaultValue={card.dailyLimit}
+                aria-invalid={Boolean(state.fieldErrors?.dailyLimit)}
+              />
+              {state.fieldErrors?.dailyLimit && (
+                <p className="text-xs text-danger">
+                  {state.fieldErrors.dailyLimit}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`txn-${card.id}`} className="text-xs">
+                Per-transaction
+              </Label>
+              <Input
+                id={`txn-${card.id}`}
+                name="txnLimit"
+                type="number"
+                min={10}
+                step={10}
+                defaultValue={card.txnLimit}
+              />
+            </div>
           </div>
           <button
             type="submit"
-            disabled={savingLimit}
-            className="inline-flex h-10 items-center justify-center rounded-full bg-violet-500 px-5 text-xs font-semibold text-white hover:bg-violet-600 disabled:opacity-60"
+            disabled={saving}
+            className="inline-flex h-9 items-center justify-center rounded-full bg-violet-500 px-4 text-xs font-semibold text-white hover:bg-violet-600 disabled:opacity-60"
           >
-            {savingLimit ? <Loader2 className="size-3.5 animate-spin" /> : "Update"}
+            {saving ? (
+              <>
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" /> Saving…
+              </>
+            ) : (
+              <>
+                <Lock className="mr-1.5 size-3.5" /> Update limits
+              </>
+            )}
           </button>
         </form>
       </div>
@@ -139,44 +260,17 @@ function CardRowView({ card }: { card: CardRow }) {
   );
 }
 
-function CardArt({ card }: { card: CardRow }) {
-  const bg = palettes[card.cardType] ?? palettes.debit;
+function Row({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
-    <div
-      className="relative aspect-[1.586/1] w-full overflow-hidden rounded-2xl p-5 text-white shadow-elev"
-      style={{ background: bg }}
-    >
-      {card.frozen && (
-        <div className="absolute inset-0 flex items-center justify-center bg-navy-900/60 backdrop-blur-sm">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider">
-            <Snowflake className="size-3.5" /> Frozen
-          </span>
-        </div>
-      )}
-      <div className="flex items-start justify-between">
-        <div className="size-8 rounded bg-gradient-to-br from-gold-300 to-gold-700" />
-        <span className="font-display text-xs font-semibold uppercase tracking-[0.25em] text-gold-300">
-          Nova Trust
-        </span>
-      </div>
-      <p className="mt-12 font-mono text-base tracking-widest">
-        •••• •••• •••• {card.lastFour}
-      </p>
-      <div className="mt-3 flex items-end justify-between text-xs">
-        <div>
-          <p className="text-[9px] uppercase tracking-wider text-white/55">Holder</p>
-          <p className="font-mono text-[11px]">{card.cardHolder}</p>
-        </div>
-        <div>
-          <p className="text-[9px] uppercase tracking-wider text-white/55">Exp</p>
-          <p className="font-mono text-[11px]">
-            {String(card.expiryMonth).padStart(2, "0")}/{String(card.expiryYear).slice(-2)}
-          </p>
-        </div>
-        <p className="font-display text-base font-bold uppercase tracking-wider text-gold-300">
-          {card.brand}
-        </p>
-      </div>
+    <div className="flex items-baseline justify-between gap-3 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium">{value}</span>
     </div>
   );
 }

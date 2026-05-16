@@ -1,12 +1,12 @@
 export const siteConfig = {
-  name: "Nova Trust Bank",
+  name: "Paxnova Trust Bank",
   tagline: "Banking, refined.",
   description:
     "A premium digital-first bank for the wealth of tomorrow. Personal, business, and wealth products engineered for the next decade.",
-  url: "https://novatrust.example.com",
+  url: "https://paxnovatrust.com",
   routine: {
     fdicNotice:
-      "Nova Trust Bank is a member of the FDIC. Deposits are insured up to $250,000 per depositor. NMLS #2026-NT (illustrative).",
+      "Paxnova Trust Bank is a member of the FDIC. Deposits are insured up to $250,000 per depositor. NMLS #2026-NT (illustrative).",
   },
 };
 
@@ -71,6 +71,50 @@ export const primaryNav: NavSection[] = [
     ],
   },
   {
+    label: "Commercial",
+    href: "/commercial",
+    groups: [
+      {
+        heading: "Lending & finance",
+        items: [
+          { title: "Commercial real estate", description: "Acquisition, construction, and bridge loans up to $250M.", href: "/commercial#real-estate" },
+          { title: "Asset-based lending", description: "Working capital secured by receivables or inventory.", href: "/commercial#asset-based" },
+          { title: "Syndicated finance", description: "Lead and participation roles in club deals.", href: "/commercial#syndicated" },
+        ],
+      },
+      {
+        heading: "Treasury & payments",
+        items: [
+          { title: "Commercial treasury", description: "Sweep, lockbox, and liquidity for $50M+ balance sheets.", href: "/commercial#treasury" },
+          { title: "Merchant services", description: "Card acquiring, ACH origination, and same-day settlement.", href: "/commercial#payments" },
+          { title: "Specialized industries", description: "Healthcare, logistics, real estate, and franchise banking.", href: "/commercial#industries" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "International",
+    href: "/international",
+    groups: [
+      {
+        heading: "Cross-border banking",
+        items: [
+          { title: "Global accounts", description: "Hold and transact in 30+ currencies with one login.", href: "/international#accounts" },
+          { title: "Foreign exchange", description: "Real-time FX with mid-market spreads and hedging.", href: "/international#fx" },
+          { title: "Trade finance", description: "Letters of credit, documentary collections, supply-chain finance.", href: "/international#trade" },
+        ],
+      },
+      {
+        heading: "Regional desks",
+        items: [
+          { title: "Asia-Pacific", description: "Dedicated bankers in Hong Kong, Singapore, and Tokyo.", href: "/international#apac" },
+          { title: "Europe & UK", description: "SEPA, Faster Payments, and EUR/GBP correspondent banking.", href: "/international#emea" },
+          { title: "Americas", description: "USD clearing for LATAM operations and US-bound trade.", href: "/international#americas" },
+        ],
+      },
+    ],
+  },
+  {
     label: "Wealth",
     href: "/personal#wealth",
     groups: [
@@ -92,7 +136,7 @@ export const primaryNav: NavSection[] = [
         heading: "The bank",
         items: [
           { title: "Our story", description: "How we're rebuilding banking from first principles.", href: "/about" },
-          { title: "Leadership", description: "Meet the team behind Nova Trust.", href: "/about#leadership" },
+          { title: "Leadership", description: "Meet the team behind Paxnova Trust.", href: "/about#leadership" },
           { title: "Responsibility", description: "Our ESG and community commitments.", href: "/about#esg" },
           { title: "Careers", description: "Build the bank of the next decade.", href: "/about#careers" },
         ],
@@ -110,6 +154,8 @@ export const footerNav = [
       { label: "Credit cards", href: "/personal#cards" },
       { label: "Mortgages", href: "/personal#mortgages" },
       { label: "Business", href: "/business" },
+      { label: "Commercial", href: "/commercial" },
+      { label: "International", href: "/international" },
       { label: "Wealth", href: "/personal#wealth" },
     ],
   },

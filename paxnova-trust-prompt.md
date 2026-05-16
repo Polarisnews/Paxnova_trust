@@ -1,6 +1,6 @@
-# Nova Trust Bank — Build Spec (Claude Code Prompt)
+# Paxnova Trust Bank — Build Spec (Claude Code Prompt)
 
-You are building **Nova Trust Bank**, a sophisticated, modern banking marketing
+You are building **Paxnova Trust Bank**, a sophisticated, modern banking marketing
 website. Design language is *inspired by* eastwestbank.com's information
 architecture and section composition — but the visual identity, copy, color
 palette, logo, and brand voice are entirely original. Goal: a site that feels
@@ -112,7 +112,7 @@ Build `src/components/brand/Logo.tsx` as pure inline SVG (no PNG):
 - **Mark**: a geometric "N" formed by two interlocking chevrons — one navy
   `#0A1A3C`, one violet `#6E3FF3` — with a thin gold `#D4AF37` accent stroke
   bridging them (symbolizing trust + forward motion).
-- **Wordmark**: "Nova Trust" in Geist 600, navy, with the crossbar of the "T"
+- **Wordmark**: "Paxnova Trust" in Geist 600, navy, with the crossbar of the "T"
   extended slightly in gold.
 - Export three variants: `variant="full"` (mark + wordmark), `variant="mark"`
   (icon only), `variant="mono-light"` (white-on-dark for dark backgrounds and
@@ -136,7 +136,7 @@ Top to bottom:
 7. **Mobile app showcase** — copy + App Store/Play Store badges on the left; pure-CSS/SVG phone mockup on the right with a fake app screen (no real app shots).
 8. **Testimonials** — 3 cards, initials-in-circle avatars, original quotes, name, role.
 9. **Branch locator teaser** — small react-leaflet map centered on NYC with 5 mock pins, "Find your branch" CTA → `/locations` (stub route OK).
-10. **Footer mega-menu** — 5 columns (Products, Company, Resources, Legal, Connect) + newsletter signup + social icons + FDIC disclosure stub + © 2026 Nova Trust Bank.
+10. **Footer mega-menu** — 5 columns (Products, Company, Resources, Legal, Connect) + newsletter signup + social icons + FDIC disclosure stub + © 2026 Paxnova Trust Bank.
 
 ### 2. `/personal` — Personal Banking
 

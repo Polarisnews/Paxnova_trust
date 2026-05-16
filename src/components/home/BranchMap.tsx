@@ -6,11 +6,11 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 const branches = [
-  { name: "Nova Trust — Manhattan Flagship", coords: [40.7589, -73.9851] as [number, number], hours: "Mon–Sat · 8a–7p" },
-  { name: "Nova Trust — Downtown Brooklyn", coords: [40.6928, -73.9903] as [number, number], hours: "Mon–Fri · 9a–6p" },
-  { name: "Nova Trust — Long Island City", coords: [40.7505, -73.9407] as [number, number], hours: "Mon–Sat · 8a–7p" },
-  { name: "Nova Trust — Upper West Side", coords: [40.7872, -73.9754] as [number, number], hours: "Mon–Fri · 9a–6p" },
-  { name: "Nova Trust — SoHo", coords: [40.7233, -74.0030] as [number, number], hours: "Mon–Sat · 10a–7p" },
+  { name: "Paxnova Trust — Manhattan Flagship", coords: [40.7589, -73.9851] as [number, number], hours: "Mon–Sat · 8a–7p" },
+  { name: "Paxnova Trust — Downtown Brooklyn", coords: [40.6928, -73.9903] as [number, number], hours: "Mon–Fri · 9a–6p" },
+  { name: "Paxnova Trust — Long Island City", coords: [40.7505, -73.9407] as [number, number], hours: "Mon–Sat · 8a–7p" },
+  { name: "Paxnova Trust — Upper West Side", coords: [40.7872, -73.9754] as [number, number], hours: "Mon–Fri · 9a–6p" },
+  { name: "Paxnova Trust — SoHo", coords: [40.7233, -74.0030] as [number, number], hours: "Mon–Sat · 10a–7p" },
 ];
 
 const novaPin = L.divIcon({

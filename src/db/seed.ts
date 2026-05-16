@@ -4,16 +4,24 @@ import {
   applications,
   billPayments,
   cards,
+  passwordResetTokens,
   payees,
+  recipientGroups,
+  scheduledWires,
   transactions,
   users,
+  wireRecipients,
 } from "./schema";
 import { generateAccountNumber, generateReferenceNumber, hashPassword } from "../lib/password";
 
 async function seed() {
-  console.log("⌁ Seeding Nova Trust database…");
+  console.log("⌁ Seeding Paxnova Trust database…");
 
   // Clear tables (order matters for FK constraints)
+  db.delete(passwordResetTokens).run();
+  db.delete(scheduledWires).run();
+  db.delete(wireRecipients).run();
+  db.delete(recipientGroups).run();
   db.delete(billPayments).run();
   db.delete(transactions).run();
   db.delete(cards).run();
@@ -29,6 +37,7 @@ async function seed() {
   const [admin] = db
     .insert(users)
     .values({
+      username: "admin",
       email: "admin@nova.test",
       passwordHash: adminPwHash,
       firstName: "Avery",
@@ -39,14 +48,44 @@ async function seed() {
     .returning()
     .all();
 
+  const demoSsnHash = await hashPassword("123456789");
   const [demo] = db
     .insert(users)
     .values({
+      username: "demo",
       email: "demo@nova.test",
       passwordHash: demoPwHash,
       firstName: "Jordan",
+      middleName: "Riley",
       lastName: "Hayes",
-      phone: "+1 (212) 555-0188",
+      phone: "(212) 555-0188",
+      phoneType: "mobile",
+      dateOfBirth: "1991-04-12",
+      ssnLast4: "6789",
+      ssnHash: demoSsnHash,
+      citizenshipStatus: "us-citizen",
+      countryOfCitizenship: "US",
+      streetAddress: "55 Hudson Yards",
+      addressLine2: "Apt 18C",
+      city: "New York",
+      stateRegion: "NY",
+      postalCode: "10001",
+      country: "US",
+      yearsAtAddress: 3,
+      housingStatus: "rent",
+      monthlyHousingPayment: 3200,
+      idType: "drivers-license",
+      idNumber: "D88-1234-5678-9012",
+      idIssuingState: "NY",
+      idExpirationDate: "2030-04-12",
+      employmentStatus: "employed",
+      occupation: "Product designer",
+      employerName: "Helio Labs Inc",
+      annualIncome: "100k-150k",
+      sourceOfFunds: "employment",
+      intendedUseOfAccount: "daily-banking",
+      maritalStatus: "single",
+      kycStatus: "verified",
       role: "user",
     })
     .returning()
@@ -111,7 +150,7 @@ async function seed() {
     { accountId: checking.id, type: "debit", amount: 62.0, description: "Lyft ride", category: "Transportation", counterparty: "Lyft", daysAgo: 6 },
     { accountId: checking.id, type: "debit", amount: 220.5, description: "Con Edison — electricity", category: "Utilities", counterparty: "Con Edison", daysAgo: 7 },
     { accountId: savings.id, type: "credit", amount: 500.0, description: "Recurring transfer from Checking", category: "Transfer", counterparty: "Apex Checking", daysAgo: 1 },
-    { accountId: savings.id, type: "credit", amount: 101.45, description: "Interest paid", category: "Interest", counterparty: "Nova Trust", daysAgo: 15 },
+    { accountId: savings.id, type: "credit", amount: 101.45, description: "Interest paid", category: "Interest", counterparty: "Paxnova Trust", daysAgo: 15 },
     { accountId: savings.id, type: "credit", amount: 500.0, description: "Recurring transfer from Checking", category: "Transfer", counterparty: "Apex Checking", daysAgo: 31 },
     { accountId: credit.id, type: "debit", amount: 89.0, description: "Amazon.com", category: "Shopping", counterparty: "Amazon", daysAgo: 2 },
     { accountId: credit.id, type: "debit", amount: 320.45, description: "Delta Air Lines", category: "Travel", counterparty: "Delta", daysAgo: 4 },
@@ -201,7 +240,31 @@ async function seed() {
     })
     .run();
 
-  // --- SAMPLE APPLICATION (pending) -------------------------------
+  // --- SAMPLE APPLICATIONS ----------------------------------------
+  const sampleKyc = {
+    firstName: "Morgan",
+    middleName: "",
+    lastName: "Ito",
+    suffix: "",
+    dateOfBirth: "1988-09-21",
+    ssnLast4: "4321",
+    citizenshipStatus: "us-citizen",
+    countryOfCitizenship: "US",
+    email: "morgan.ito@example.com",
+    phone: "(415) 555-0144",
+    streetAddress: "1700 Market Street",
+    addressLine2: "Suite 1404",
+    city: "San Francisco",
+    stateRegion: "CA",
+    postalCode: "94103",
+    employmentStatus: "employed",
+    occupation: "Software engineer",
+    employerName: "Helio Labs Inc",
+    annualIncome: "150k-250k",
+    sourceOfFunds: "employment",
+  };
+  const nowIso = new Date().toISOString();
+
   db.insert(applications)
     .values({
       userId: null,
@@ -209,16 +272,105 @@ async function seed() {
       status: "pending",
       applicantName: "Morgan Ito",
       applicantEmail: "morgan.ito@example.com",
-      applicantPhone: "+1 (415) 555-0144",
+      applicantPhone: "(415) 555-0144",
       fundingAmount: 500,
       fundingSource: "external-bank",
       referenceNumber: generateReferenceNumber(),
+      data: JSON.stringify({
+        kyc: sampleKyc,
+        product: {
+          fundingAmount: 500,
+          fundingSource: "external-bank",
+          intendedUseOfAccount: "daily-banking",
+          expectedMonthlyDeposits: "10k-25k",
+        },
+        consent: {
+          termsAt: nowIso,
+          esignAt: nowIso,
+          patriotAt: nowIso,
+          creditPullAt: nowIso,
+        },
+      }),
+    })
+    .run();
+
+  db.insert(applications)
+    .values({
+      userId: null,
+      product: "business",
+      status: "pending",
+      applicantName: "Casey Ortega",
+      applicantEmail: "casey@brightline.co",
+      applicantPhone: "(206) 555-0177",
+      fundingAmount: 5000,
+      fundingSource: "external-bank",
+      referenceNumber: generateReferenceNumber(),
+      data: JSON.stringify({
+        kyc: {
+          ...sampleKyc,
+          firstName: "Casey",
+          lastName: "Ortega",
+          dateOfBirth: "1985-03-08",
+          email: "casey@brightline.co",
+          phone: "(206) 555-0177",
+          city: "Seattle",
+          stateRegion: "WA",
+          postalCode: "98101",
+          streetAddress: "1201 3rd Ave",
+        },
+        product: {
+          legalName: "Brightline Studio LLC",
+          dba: "Brightline",
+          ein: "453892017",
+          entityType: "llc-multi",
+          stateOfFormation: "WA",
+          dateOfFormation: "2021-07-15",
+          industry: "tech",
+          naicsCode: "541511",
+          annualRevenue: "250k-500k",
+          numEmployees: 8,
+          businessAddress: "1201 3rd Ave, Floor 8",
+          businessCity: "Seattle",
+          businessState: "WA",
+          businessZip: "98101",
+          businessPhone: "(206) 555-0177",
+          businessWebsite: "https://brightline.co",
+          controlPersonName: "Casey Ortega",
+          controlPersonTitle: "Managing Member",
+          controlPersonDob: "1985-03-08",
+          controlPersonSsn: "•••••4321",
+          beneficialOwners: [
+            {
+              name: "Casey Ortega",
+              dateOfBirth: "1985-03-08",
+              ssn: "•••••4321",
+              ownershipPct: 55,
+              address: "1201 3rd Ave #1404, Seattle, WA 98101",
+              title: "Managing Member",
+            },
+            {
+              name: "Priya Shah",
+              dateOfBirth: "1987-11-02",
+              ssn: "•••••9988",
+              ownershipPct: 45,
+              address: "500 Yale Ave N #210, Seattle, WA 98109",
+              title: "Member",
+            },
+          ],
+        },
+        consent: {
+          termsAt: nowIso,
+          esignAt: nowIso,
+          patriotAt: nowIso,
+          creditPullAt: nowIso,
+        },
+      }),
     })
     .run();
 
   console.log("✓ Seeded.");
-  console.log("  Admin login : admin@nova.test / Admin123!");
-  console.log("  User login  : demo@nova.test  / Demo123!");
+  console.log("  Admin login : admin / Admin123!");
+  console.log("  User login  : demo  / Demo123!");
 }
 
 seed().catch((err) => {

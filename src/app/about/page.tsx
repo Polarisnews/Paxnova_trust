@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Leaf, Sparkles, Target, Users } from "lucide-react";
 
-export const metadata: Metadata = { title: "About Nova Trust" };
+export const metadata: Metadata = { title: "About Paxnova Trust" };
 
 const story = [
-  "Nova Trust started in 2024 with a simple frustration: banks treat their customers like account numbers, not people. The biggest banks have the worst apps; the most innovative fintechs aren't actually banks.",
-  "We chartered Nova Trust as a real, fully-regulated U.S. bank — but built it like a 2026 software company. Every product, from the checking account to the trust desk, runs on the same modern stack and the same human team.",
+  "Paxnova Trust started in 2024 with a simple frustration: banks treat their customers like account numbers, not people. The biggest banks have the worst apps; the most innovative fintechs aren't actually banks.",
+  "We chartered Paxnova Trust as a real, fully-regulated U.S. bank — but built it like a 2026 software company. Every product, from the checking account to the trust desk, runs on the same modern stack and the same human team.",
   "We're a fiduciary at every touchpoint. Your money grows because we built compounding into the core, not the marketing.",
 ];
 
@@ -78,7 +78,7 @@ export default function AboutPage() {
             Leadership
           </h2>
           <p className="mt-2 text-muted-foreground">
-            The team building Nova Trust. Reach any of us by email — we mean it.
+            The team building Paxnova Trust. Reach any of us by email — we mean it.
           </p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

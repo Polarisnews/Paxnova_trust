@@ -4,8 +4,16 @@ import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { accounts, billPayments, cards, payees, transactions } from "@/db/schema";
+import {
+  accounts,
+  billPayments,
+  cards,
+  payees,
+  transactions,
+  transfers,
+} from "@/db/schema";
 import { requireAuth } from "@/lib/auth";
+import { generateReferenceNumber } from "@/lib/password";
 
 export type ActionState = {
   ok: boolean;
@@ -111,12 +119,59 @@ export async function transferAction(
 }
 
 // ---------- PAYEES -------------------------------------------------
-const payeeSchema = z.object({
-  name: z.string().min(1, "Name required").max(60),
-  accountNumber: z.string().min(3, "Account number required").max(40),
-  category: z.string().max(40).optional(),
-  nickname: z.string().max(40).optional(),
-});
+const payeeSchema = z
+  .object({
+    name: z.string().min(1, "Name required").max(80),
+    accountNumber: z.string().min(3, "Account number required").max(40),
+    category: z.string().max(40).optional().or(z.literal("")),
+    nickname: z.string().max(40).optional().or(z.literal("")),
+    payeeType: z
+      .enum(["person", "business", "utility", "external-bank"])
+      .default("business"),
+    bankName: z.string().max(80).optional().or(z.literal("")),
+    routingNumber: z
+      .string()
+      .max(20)
+      .optional()
+      .or(z.literal(""))
+      .refine(
+        (s) => !s || /^\d{9}$/.test(s),
+        "Routing number must be 9 digits"
+      ),
+    accountType: z.enum(["checking", "savings"]).optional(),
+    email: z
+      .string()
+      .email("Invalid email")
+      .optional()
+      .or(z.literal("")),
+    phone: z.string().max(40).optional().or(z.literal("")),
+  })
+  .refine(
+    (d) =>
+      d.payeeType === "person"
+        ? (d.email ?? "").length > 0 || (d.phone ?? "").length > 0
+        : true,
+    {
+      message: "Person payees need an email or phone (for Zelle)",
+      path: ["email"],
+    }
+  )
+  .refine(
+    (d) =>
+      d.payeeType === "external-bank" || d.payeeType === "business"
+        ? (d.routingNumber ?? "").length === 9
+        : true,
+    {
+      message: "Routing number is required for bank/business payees",
+      path: ["routingNumber"],
+    }
+  );
+
+function derivePreferredMethod(
+  payeeType: "person" | "business" | "utility" | "external-bank"
+): "zelle" | "ach" | "wire" {
+  return payeeType === "person" ? "zelle" : "ach";
+}
 
 export async function addPayeeAction(
   _prev: ActionState,
@@ -128,6 +183,12 @@ export async function addPayeeAction(
     accountNumber: formData.get("accountNumber"),
     category: formData.get("category") || undefined,
     nickname: formData.get("nickname") || undefined,
+    payeeType: formData.get("payeeType") || "business",
+    bankName: formData.get("bankName") || undefined,
+    routingNumber: formData.get("routingNumber") || undefined,
+    accountType: formData.get("accountType") || undefined,
+    email: formData.get("email") || undefined,
+    phone: formData.get("phone") || undefined,
   });
   if (!parsed.success) return { ok: false, fieldErrors: flatten(parsed.error) };
 
@@ -136,13 +197,310 @@ export async function addPayeeAction(
       userId: user.id,
       name: parsed.data.name,
       accountNumber: parsed.data.accountNumber,
-      category: parsed.data.category,
-      nickname: parsed.data.nickname,
+      category: parsed.data.category || null,
+      nickname: parsed.data.nickname || null,
+      payeeType: parsed.data.payeeType,
+      bankName: parsed.data.bankName || null,
+      routingNumber: parsed.data.routingNumber || null,
+      accountType: parsed.data.accountType ?? null,
+      email: parsed.data.email || null,
+      phone: parsed.data.phone || null,
+      preferredMethod: derivePreferredMethod(parsed.data.payeeType),
     })
     .run();
 
+  revalidatePath("/dashboard/transfer");
   revalidatePath("/dashboard/pay-bills");
-  return { ok: true, message: `${parsed.data.name} added as a payee.` };
+  return { ok: true, message: `${parsed.data.name} added as a recipient.` };
+}
+
+// ---------- ENHANCED TRANSFER (own / payee, internal / Zelle / ACH / Wire)
+// --------------------------------------------------------------------------
+
+const WIRE_FEE = 25;
+
+const initiateTransferSchema = z
+  .object({
+    fromAccountId: z.coerce.number().int().positive("Choose a source"),
+    destinationKind: z.enum(["own", "payee"]),
+    toAccountId: z.coerce.number().int().optional(),
+    toPayeeId: z.coerce.number().int().optional(),
+    amount: z.coerce.number().positive("Amount must be greater than 0"),
+    memo: z.string().max(120).optional().or(z.literal("")),
+    sendByWire: z.string().optional(),
+  })
+  .refine(
+    (d) =>
+      d.destinationKind === "own" ? (d.toAccountId ?? 0) > 0 : true,
+    { message: "Pick a destination account", path: ["toAccountId"] }
+  )
+  .refine(
+    (d) => (d.destinationKind === "payee" ? (d.toPayeeId ?? 0) > 0 : true),
+    { message: "Pick a recipient", path: ["toPayeeId"] }
+  );
+
+/**
+ * Returns a Date N business days in the future. Skips Saturdays + Sundays.
+ * Doesn't know about US federal holidays — fine for demo fidelity.
+ */
+function addBusinessDays(start: Date, days: number): Date {
+  const d = new Date(start);
+  let remaining = days;
+  while (remaining > 0) {
+    d.setDate(d.getDate() + 1);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) remaining--;
+  }
+  return d;
+}
+
+export async function initiateTransferAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState & { referenceNumber?: string }> {
+  const user = await requireAuth();
+  const parsed = initiateTransferSchema.safeParse({
+    fromAccountId: formData.get("fromAccountId"),
+    destinationKind: formData.get("destinationKind"),
+    toAccountId: formData.get("toAccountId") || undefined,
+    toPayeeId: formData.get("toPayeeId") || undefined,
+    amount: formData.get("amount"),
+    memo: formData.get("memo") || undefined,
+    sendByWire: formData.get("sendByWire") || undefined,
+  });
+  if (!parsed.success) {
+    return { ok: false, fieldErrors: flatten(parsed.error) };
+  }
+  const {
+    fromAccountId,
+    destinationKind,
+    toAccountId,
+    toPayeeId,
+    amount,
+    memo,
+    sendByWire,
+  } = parsed.data;
+
+  const from = db
+    .select()
+    .from(accounts)
+    .where(and(eq(accounts.id, fromAccountId), eq(accounts.userId, user.id)))
+    .get();
+  if (!from) return { ok: false, message: "Source account not found." };
+  // Legacy non-status states still block.
+  if (from.status === "closed" || from.status === "pending")
+    return { ok: false, message: "Source account is not active." };
+
+  let transferMethod: "internal" | "zelle" | "ach" | "wire";
+  let toAccount: typeof from | null = null;
+  let toPayee: typeof payees.$inferSelect | null = null;
+  let toAccountName: string;
+  let toAccountLast4: string;
+  let toBankName: string | null = null;
+  let toRoutingNumber: string | null = null;
+  let estimatedSettlement: Date;
+
+  if (destinationKind === "own") {
+    if (toAccountId === fromAccountId)
+      return {
+        ok: false,
+        message: "Source and destination must be different.",
+      };
+    toAccount = db
+      .select()
+      .from(accounts)
+      .where(
+        and(eq(accounts.id, toAccountId!), eq(accounts.userId, user.id))
+      )
+      .get() as typeof from | null;
+    if (!toAccount)
+      return { ok: false, message: "Destination account not found." };
+    if (toAccount.status !== "active")
+      return { ok: false, message: "Destination account is not active." };
+
+    transferMethod = "internal";
+    toAccountName = toAccount.name;
+    toAccountLast4 = toAccount.accountNumber.slice(-4);
+    toBankName = "Paxnova Trust Bank";
+    toRoutingNumber = toAccount.routingNumber;
+    estimatedSettlement = new Date(); // instant
+  } else {
+    toPayee = db
+      .select()
+      .from(payees)
+      .where(and(eq(payees.id, toPayeeId!), eq(payees.userId, user.id)))
+      .get() as typeof payees.$inferSelect | null;
+    if (!toPayee) return { ok: false, message: "Recipient not found." };
+
+    const wireRequested = sendByWire === "on" || sendByWire === "true";
+    if (toPayee.preferredMethod === "zelle" && !wireRequested) {
+      transferMethod = "zelle";
+      estimatedSettlement = new Date(Date.now() + 5 * 60 * 1000); // ~5 min
+    } else if (wireRequested) {
+      transferMethod = "wire";
+      // Same-day if before 5 PM ET, otherwise next business day at 9 AM.
+      estimatedSettlement = new Date();
+    } else {
+      transferMethod = "ach";
+      estimatedSettlement = addBusinessDays(new Date(), 2);
+    }
+
+    toAccountName = toPayee.name;
+    toAccountLast4 = (toPayee.accountNumber ?? "").slice(-4) || "----";
+    toBankName = toPayee.bankName ?? null;
+    toRoutingNumber = toPayee.routingNumber ?? null;
+  }
+
+  const fee = transferMethod === "wire" ? WIRE_FEE : 0;
+  const totalDebit = Number((amount + fee).toFixed(2));
+  const reference = `TX-${generateReferenceNumber().replace(/^NT-/, "")}`;
+
+  // Code status only gates ACH (external bank) and wire flows.
+  const codeApplies =
+    from.status === "code" &&
+    (transferMethod === "ach" || transferMethod === "wire");
+
+  // Shared row shape — completed/active mutates this further below.
+  const transferRow = {
+    userId: user.id,
+    referenceNumber: reference,
+    fromAccountId: from.id,
+    toType: destinationKind,
+    toAccountId: toAccount?.id ?? null,
+    toPayeeId: toPayee?.id ?? null,
+    transferMethod,
+    amount,
+    fee,
+    memo: memo || null,
+    fromAccountName: from.name,
+    fromAccountLast4: from.accountNumber.slice(-4),
+    toAccountName,
+    toAccountLast4,
+    toBankName,
+    toRoutingNumber,
+    estimatedSettlement,
+  };
+
+  // ── Interrupt paths: create the transfer record with the right status
+  // and return. Money is not moved. The processing page reads the status
+  // and shows the appropriate interrupt UI.
+
+  if (from.status === "frozen") {
+    db.insert(transfers).values({ ...transferRow, status: "rejected_frozen" }).run();
+    revalidatePath("/dashboard");
+    return { ok: true, referenceNumber: reference };
+  }
+
+  if (from.status === "custom") {
+    db.insert(transfers)
+      .values({
+        ...transferRow,
+        status: "interrupted_custom",
+        interruptMessage: from.customMessage ?? null,
+      })
+      .run();
+    revalidatePath("/dashboard");
+    return { ok: true, referenceNumber: reference };
+  }
+
+  if (codeApplies) {
+    // Funds check upfront so the user doesn't pass both gates only to fail.
+    if (from.balance < totalDebit && from.type !== "credit") {
+      return {
+        ok: false,
+        message:
+          fee > 0
+            ? `Insufficient funds. Need $${totalDebit.toFixed(2)} including the $${fee} wire fee.`
+            : "Insufficient funds in source account.",
+      };
+    }
+    db.insert(transfers).values({ ...transferRow, status: "pending_tcv" }).run();
+    revalidatePath("/dashboard");
+    return { ok: true, referenceNumber: reference };
+  }
+
+  // ── Active path (or code-status with internal/zelle which Code ignores).
+
+  if (from.balance < totalDebit && from.type !== "credit") {
+    return {
+      ok: false,
+      message:
+        fee > 0
+          ? `Insufficient funds. Need $${totalDebit.toFixed(2)} including the $${fee} wire fee.`
+          : "Insufficient funds in source account.",
+    };
+  }
+
+  db.transaction(() => {
+    const newFromBal = Number((from.balance - totalDebit).toFixed(2));
+    db.update(accounts)
+      .set({ balance: newFromBal })
+      .where(eq(accounts.id, from.id))
+      .run();
+
+    db.insert(transactions)
+      .values({
+        accountId: from.id,
+        type: "debit",
+        amount: totalDebit,
+        description:
+          transferMethod === "internal"
+            ? `Transfer to ${toAccountName}`
+            : `${transferMethod.toUpperCase()} to ${toAccountName}${
+                memo ? ` — ${memo}` : ""
+              }`,
+        category: "Transfer",
+        counterparty: toAccountName,
+        counterpartyBank: toBankName,
+        counterpartyAccountNumber: toAccountLast4
+          ? `••••${toAccountLast4}`
+          : null,
+        remark: memo || null,
+        referenceNumber: reference,
+        balanceAfter: newFromBal,
+      })
+      .run();
+
+    if (transferMethod === "internal" && toAccount) {
+      const newToBal = Number((toAccount.balance + amount).toFixed(2));
+      db.update(accounts)
+        .set({ balance: newToBal })
+        .where(eq(accounts.id, toAccount.id))
+        .run();
+      db.insert(transactions)
+        .values({
+          accountId: toAccount.id,
+          type: "credit",
+          amount,
+          description: `Transfer from ${from.name}${memo ? ` — ${memo}` : ""}`,
+          category: "Transfer",
+          counterparty: from.name,
+          counterpartyBank: "Paxnova Trust Bank",
+          counterpartyAccountNumber: `••••${from.accountNumber.slice(-4)}`,
+          remark: memo || null,
+          referenceNumber: reference,
+          balanceAfter: newToBal,
+        })
+        .run();
+    }
+
+    db.insert(transfers)
+      .values({
+        ...transferRow,
+        status: "completed",
+        completedAt: new Date(),
+      })
+      .run();
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/transfer");
+
+  return {
+    ok: true,
+    message: `Transfer initiated.`,
+    referenceNumber: reference,
+  };
 }
 
 const paymentSchema = z.object({
