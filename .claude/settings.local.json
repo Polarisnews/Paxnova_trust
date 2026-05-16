@@ -33,7 +33,21 @@
       "Bash(powershell -NoProfile -Command ' *)",
       "Bash(powershell *)",
       "Bash(git remote *)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(git push *)",
+      "Bash(xargs grep -l -iE \"nonce|csp\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} in %{time_total}s\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} \\(admin/accounts\\) in %{time_total}s\\\\n\" -H \"Cookie: ignored\" http://localhost:3000/admin/accounts)",
+      "Bash(curl -s -o /dev/null -w \"/ HTTP %{http_code} in %{time_total}s\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"/manifest.webmanifest HTTP %{http_code}\\\\n\" http://localhost:3000/manifest.webmanifest)",
+      "Bash(curl -s -o /dev/null -w \"/icon HTTP %{http_code}\\\\n\" http://localhost:3000/icon)",
+      "Bash(curl -s -o /dev/null -w \"/icon1 HTTP %{http_code}\\\\n\" http://localhost:3000/icon1)",
+      "Bash(curl -s -o /dev/null -w \"/apple-icon HTTP %{http_code}\\\\n\" http://localhost:3000/apple-icon)",
+      "Bash(curl *)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(sqlite3 paxnovatrust.db \"UPDATE users SET email = 'admin@paxnovatrust.test' WHERE email = 'admin@nova.test'; UPDATE users SET email = 'demo@paxnovatrust.test' WHERE email = 'demo@nova.test'; SELECT id, username, email, role FROM users ORDER BY id LIMIT 5;\")",
+      "Bash(sqlite3 paxnovatrust.db \"PRAGMA table_info\\(users\\);\")",
+      "Bash(sqlite3 *)"
     ]
   }
 }

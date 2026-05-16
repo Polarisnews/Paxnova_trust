@@ -123,7 +123,9 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+        <main className="flex-1 px-4 py-6 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:px-6 sm:py-8 lg:px-8 lg:pb-8">
+          {children}
+        </main>
 
         <MobileTabBar pathname={pathname} />
       </div>
@@ -165,10 +167,14 @@ function MobileTabBar({ pathname }: { pathname: string }) {
     { href: "/dashboard", label: "Home", icon: LayoutGrid },
     { href: "/dashboard/transfer", label: "Transfer", icon: TrendingUp },
     { href: "/dashboard/cards", label: "Cards", icon: CreditCard },
+    { href: "/dashboard/statements", label: "Activity", icon: FileText },
     { href: "/dashboard/profile", label: "Account", icon: Wallet },
   ];
   return (
-    <nav className="sticky bottom-0 z-30 grid grid-cols-4 border-t border-border bg-background/95 backdrop-blur lg:hidden">
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+      aria-label="Primary"
+    >
       {items.map(({ href, label, icon: Icon }) => {
         const active =
           href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
@@ -176,13 +182,22 @@ function MobileTabBar({ pathname }: { pathname: string }) {
           <Link
             key={href}
             href={href}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "flex flex-col items-center gap-1 py-2.5 text-[10px]",
-              active ? "text-violet-500" : "text-muted-foreground"
+              "relative flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-medium transition active:scale-95",
+              active
+                ? "text-violet-500"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
+            {active && (
+              <span
+                aria-hidden
+                className="absolute top-0 left-1/2 h-[3px] w-8 -translate-x-1/2 rounded-b-full bg-violet-500"
+              />
+            )}
             <Icon className="size-5" />
-            {label}
+            <span className="leading-none">{label}</span>
           </Link>
         );
       })}

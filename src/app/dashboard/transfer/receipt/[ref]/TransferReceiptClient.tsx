@@ -49,7 +49,7 @@ export function TransferReceiptClient({ transfer }: { transfer: Transfer }) {
     setBusy(true);
     try {
       const blob = await receiptToJpegBlob(receiptRef.current);
-      downloadBlob(blob, `paxnova-trust-receipt-${transfer.referenceNumber}.jpg`);
+      downloadBlob(blob, `paxnovatrust-receipt-${transfer.referenceNumber}.jpg`);
       toast.success("Receipt saved as JPEG.");
     } catch (err) {
       console.error(err);

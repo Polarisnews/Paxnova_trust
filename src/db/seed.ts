@@ -38,7 +38,7 @@ async function seed() {
     .insert(users)
     .values({
       username: "admin",
-      email: "admin@nova.test",
+      email: "admin@paxnovatrust.test",
       passwordHash: adminPwHash,
       firstName: "Avery",
       lastName: "Sterling",
@@ -53,7 +53,7 @@ async function seed() {
     .insert(users)
     .values({
       username: "demo",
-      email: "demo@nova.test",
+      email: "demo@paxnovatrust.test",
       passwordHash: demoPwHash,
       firstName: "Jordan",
       middleName: "Riley",

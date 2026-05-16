@@ -146,12 +146,16 @@ export function AccountAdminActions({
       : "active";
 
   return (
-    <div className="flex items-center justify-end gap-2 text-xs">
+    <div
+      className="pn-admin-actions flex items-center gap-2 overflow-x-auto justify-end text-xs"
+      role="toolbar"
+      aria-label="Account actions"
+    >
       <select
         value={currentStatusKey}
         onChange={(e) => onPickStatus(e.target.value as StatusKey)}
         disabled={pending}
-        className="h-8 rounded-full border border-border bg-background px-3 text-xs font-medium disabled:opacity-60"
+        className="h-8 shrink-0 rounded-full border border-border bg-background px-3 text-xs font-medium disabled:opacity-60"
         aria-label="Account status"
       >
         <option value="active">Status · Active</option>
@@ -164,7 +168,7 @@ export function AccountAdminActions({
         value={currentCurrency}
         onChange={(e) => onPickCurrency(e.target.value)}
         disabled={pending}
-        className="h-8 max-w-[140px] rounded-full border border-border bg-background px-3 text-xs font-medium disabled:opacity-60"
+        className="h-8 max-w-[140px] shrink-0 rounded-full border border-border bg-background px-3 text-xs font-medium disabled:opacity-60"
         aria-label="Account currency"
         title="Account currency"
       >
@@ -179,7 +183,7 @@ export function AccountAdminActions({
         <button
           type="button"
           onClick={() => setPanel(panel === "code" ? null : "code")}
-          className="inline-flex h-8 items-center gap-1 rounded-full bg-violet-500/15 px-3 font-medium text-violet-500 hover:bg-violet-500/25"
+          className="inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-violet-500/15 px-3 font-medium text-violet-500 hover:bg-violet-500/25"
         >
           <KeyRound className="size-3.5" /> Codes
         </button>
@@ -188,7 +192,7 @@ export function AccountAdminActions({
         <button
           type="button"
           onClick={() => setPanel(panel === "custom" ? null : "custom")}
-          className="inline-flex h-8 items-center gap-1 rounded-full bg-gold-500/15 px-3 font-medium text-gold-700 hover:bg-gold-500/25 dark:text-gold-300"
+          className="inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-gold-500/15 px-3 font-medium text-gold-700 hover:bg-gold-500/25 dark:text-gold-300"
         >
           <AlertTriangle className="size-3.5" /> Message
         </button>
@@ -197,7 +201,7 @@ export function AccountAdminActions({
       <button
         type="button"
         onClick={() => setPanel(panel === "txn" ? null : "txn")}
-        className="inline-flex h-8 items-center gap-1 rounded-full bg-muted px-3 font-medium hover:bg-muted/70"
+        className="inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-muted px-3 font-medium hover:bg-muted/70"
       >
         <Plus className="size-3.5" /> Add transaction
       </button>
@@ -205,7 +209,7 @@ export function AccountAdminActions({
       <button
         type="button"
         onClick={() => setHistoryOpen(true)}
-        className="inline-flex h-8 items-center gap-1 rounded-full bg-violet-500/10 px-3 font-medium text-violet-500 hover:bg-violet-500/20"
+        className="inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-violet-500/10 px-3 font-medium text-violet-500 hover:bg-violet-500/20"
       >
         <Sparkles className="size-3.5" /> Generate history
       </button>
