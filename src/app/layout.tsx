@@ -6,7 +6,6 @@ import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CommandPalette } from "@/components/layout/CommandPalette";
-import { MobileMarketingCTA } from "@/components/layout/MobileMarketingCTA";
 import { AccountWizard } from "@/components/layout/AccountWizard";
 import "./globals.css";
 
@@ -109,7 +108,6 @@ export default async function RootLayout({
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
-            <MobileMarketingCTA />
             <AccountWizard />
           </div>
           <Toaster richColors position="top-right" />

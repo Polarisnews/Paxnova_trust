@@ -38,9 +38,6 @@ paxnovatrust.com {
 		-Server
 	}
 
-	# Drop directory listings for any static path Caddy serves directly.
-	file_server browse=false
-
 	log {
 		output file /var/log/caddy/paxnovatrust.access.log {
 			roll_size 50mb
