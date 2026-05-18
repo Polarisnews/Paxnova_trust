@@ -12,13 +12,19 @@ import {
   transactions,
   transfers,
 } from "@/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser, requireAuth } from "@/lib/auth";
 import { generateReferenceNumber } from "@/lib/password";
 
 export type ActionState = {
   ok: boolean;
   message?: string;
   fieldErrors?: Record<string, string>;
+  /** Optional — set by addPayeeAction so callers (e.g. the Pay Bills wizard)
+   *  can auto-select the newly created payee without a full refetch. */
+  payeeId?: number;
+  /** Optional — set by schedulePaymentAction so the wizard can deep-link
+   *  to the newly created bill-payment receipt. */
+  paymentId?: number;
 };
 
 function flatten(err: z.ZodError): Record<string, string> {
@@ -192,7 +198,8 @@ export async function addPayeeAction(
   });
   if (!parsed.success) return { ok: false, fieldErrors: flatten(parsed.error) };
 
-  db.insert(payees)
+  const inserted = db
+    .insert(payees)
     .values({
       userId: user.id,
       name: parsed.data.name,
@@ -207,11 +214,17 @@ export async function addPayeeAction(
       phone: parsed.data.phone || null,
       preferredMethod: derivePreferredMethod(parsed.data.payeeType),
     })
-    .run();
+    .returning({ id: payees.id })
+    .all();
+  const payeeId = inserted[0]?.id;
 
   revalidatePath("/dashboard/transfer");
   revalidatePath("/dashboard/pay-bills");
-  return { ok: true, message: `${parsed.data.name} added as a recipient.` };
+  return {
+    ok: true,
+    message: `${parsed.data.name} added as a recipient.`,
+    payeeId,
+  };
 }
 
 // ---------- ENHANCED TRANSFER (own / payee, internal / Zelle / ACH / Wire)
@@ -547,6 +560,9 @@ export async function schedulePaymentAction(
     return { ok: false, message: "Insufficient funds to pay now." };
   }
 
+  // Capture the inserted bill_payments id so we can deep-link to the
+  // receipt from the wizard's done screen.
+  let paymentId = 0;
   db.transaction(() => {
     if (payNowFlag) {
       const newBal = Number((account.balance - amount).toFixed(2));
@@ -565,7 +581,8 @@ export async function schedulePaymentAction(
           balanceAfter: newBal,
         })
         .run();
-      db.insert(billPayments)
+      const ins = db
+        .insert(billPayments)
         .values({
           userId: user.id,
           payeeId: payee.id,
@@ -575,9 +592,12 @@ export async function schedulePaymentAction(
           status: "paid",
           memo,
         })
-        .run();
+        .returning({ id: billPayments.id })
+        .all();
+      paymentId = ins[0]?.id ?? 0;
     } else {
-      db.insert(billPayments)
+      const ins = db
+        .insert(billPayments)
         .values({
           userId: user.id,
           payeeId: payee.id,
@@ -587,17 +607,22 @@ export async function schedulePaymentAction(
           status: "scheduled",
           memo,
         })
-        .run();
+        .returning({ id: billPayments.id })
+        .all();
+      paymentId = ins[0]?.id ?? 0;
     }
   });
 
   revalidatePath("/dashboard/pay-bills");
   revalidatePath("/dashboard");
+  if (paymentId)
+    revalidatePath(`/dashboard/pay-bills/receipt/${paymentId}`);
   return {
     ok: true,
     message: payNowFlag
       ? `Paid ${payee.name} $${amount.toFixed(2)}.`
       : `Payment of $${amount.toFixed(2)} scheduled to ${payee.name}.`,
+    paymentId,
   };
 }
 
@@ -695,7 +720,16 @@ export async function contactAction(
   if (!parsed.success) return { ok: false, fieldErrors: flatten(parsed.error) };
 
   const { contactMessages } = await import("@/db/schema");
-  db.insert(contactMessages).values(parsed.data).run();
+  const signedInUser = await getCurrentUser();
+  const now = new Date();
+  db.insert(contactMessages)
+    .values({
+      ...parsed.data,
+      userId: signedInUser?.id ?? null,
+      status: "open",
+      lastActivityAt: now,
+    })
+    .run();
   return { ok: true, message: "Got it. A team member will be in touch within one business day." };
 }
 

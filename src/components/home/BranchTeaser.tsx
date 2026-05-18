@@ -23,19 +23,19 @@ export function BranchTeaser() {
             Digital-first, never digital-only.
           </h2>
           <p className="mt-4 max-w-md text-muted-foreground">
-            Flagship branches in 14 cities, 55,000 fee-free ATMs nationwide. When you
-            need a person, one is two blocks away.
+            Branches across 24 U.S. cities and 55,000+ fee-free ATMs nationwide.
+            When you need a person, one is two blocks away.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
-              href="/contact"
+              href="/branches?type=branch"
               className="inline-flex h-11 items-center gap-1.5 rounded-full bg-navy-900 px-5 text-sm font-semibold text-white transition hover:bg-navy-700"
             >
               <MapPin className="size-4" />
               Find a branch
             </Link>
             <Link
-              href="/contact"
+              href="/branches?type=atm"
               className="inline-flex h-11 items-center gap-1 rounded-full border border-border px-5 text-sm font-medium hover:bg-muted"
             >
               Locate an ATM

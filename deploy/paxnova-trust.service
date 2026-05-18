@@ -1,0 +1,65 @@
+# systemd unit — drops at /etc/systemd/system/paxnova-trust.service
+#
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now paxnova-trust
+#   sudo systemctl status paxnova-trust
+#   sudo journalctl -u paxnova-trust -f
+
+[Unit]
+Description=Paxnova Trust Next.js server
+Documentation=https://github.com/YOUR-USER/PaxnovaTrust
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Dedicated unprivileged user. Create it with:
+#   sudo useradd -r -m -d /home/paxnova -s /bin/bash paxnova
+User=paxnova
+Group=paxnova
+
+# Where the app lives (`git pull` target).
+WorkingDirectory=/home/paxnova/PaxnovaTrust
+
+# Pull every var from this file. Drop your filled .env.production here.
+EnvironmentFile=/home/paxnova/PaxnovaTrust/.env.production
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+# Use `npm start` (which is `next start`). next start binds 0.0.0.0:PORT
+# by default; Caddy reverse-proxies to 127.0.0.1:3000 so the bind is fine.
+ExecStart=/usr/bin/npm start
+
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+# Resource caps — adjust upward if you ever scale users + payee history.
+LimitNOFILE=65536
+MemoryHigh=1G
+MemoryMax=1500M
+
+# Hardening — every NoNewPrivileges-style flag we can safely enable.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+# The app needs write access to the DB + uploads dir; nothing else outside
+# its own working tree.
+ReadWritePaths=/var/lib/paxnovatrust /home/paxnova/PaxnovaTrust/.next/cache
+
+[Install]
+WantedBy=multi-user.target

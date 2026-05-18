@@ -70,11 +70,11 @@ export function AppShowcase() {
 function PhoneMockup() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30, rotate: -2 }}
-      whileInView={{ opacity: 1, y: 0, rotate: -3 }}
+      initial={{ y: 30, rotate: -2 }}
+      whileInView={{ y: 0, rotate: -3 }}
       viewport={{ once: true }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="relative mx-auto h-[640px] w-[320px] rounded-[3rem] border border-white/10 bg-gradient-to-b from-navy-900 to-[#050B1F] p-3 shadow-2xl"
+      className="relative mx-auto h-[560px] w-[280px] rounded-[2.5rem] border border-white/10 bg-gradient-to-b from-navy-900 to-[#050B1F] p-3 shadow-2xl sm:h-[640px] sm:w-[320px] sm:rounded-[3rem]"
       style={{
         boxShadow:
           "0 40px 80px -20px rgba(10, 26, 60, 0.5), 0 0 0 1px rgba(255,255,255,0.04) inset",

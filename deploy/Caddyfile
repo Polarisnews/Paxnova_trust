@@ -1,0 +1,51 @@
+# Paxnova Trust — Caddy reverse-proxy config (paxnovatrust.com)
+#
+# Drop this at /etc/caddy/Caddyfile on the VPS, then
+# `sudo systemctl reload caddy`. Caddy auto-provisions Let's Encrypt TLS
+# certificates for both names on first hit.
+
+# Canonicalize: www → apex via 308 (Permanent Redirect).
+www.paxnovatrust.com {
+	redir https://paxnovatrust.com{uri} 308
+}
+
+paxnovatrust.com {
+	encode zstd gzip
+
+	# Forward everything to the Next.js process listening on 127.0.0.1:3000.
+	# The systemd unit (paxnova-trust.service) keeps it running.
+	reverse_proxy 127.0.0.1:3000 {
+		# Pass the real client IP through so the app's rate limiter +
+		# audit log see the user's address instead of localhost.
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Real-IP {remote_host}
+	}
+
+	# Cache static assets aggressively — Next.js content-hashes filenames
+	# so we can mark them immutable.
+	@nextStatic path /_next/static/*
+	header @nextStatic Cache-Control "public, max-age=31536000, immutable"
+
+	# Belt-and-braces security headers in case middleware ever misses one.
+	# (Next.js middleware sets all of these too; this is the proxy backstop.)
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Don't leak the underlying server.
+		-Server
+	}
+
+	# Drop directory listings for any static path Caddy serves directly.
+	file_server browse=false
+
+	log {
+		output file /var/log/caddy/paxnovatrust.access.log {
+			roll_size 50mb
+			roll_keep 10
+		}
+		format json
+	}
+}

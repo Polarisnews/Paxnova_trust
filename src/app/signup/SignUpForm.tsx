@@ -304,7 +304,7 @@ function StepIdentity({
 }) {
   return (
     <div className={hidden ? "hidden" : "space-y-4"}>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-12">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
         <TextField
           id="firstName"
           label="First name"
@@ -317,7 +317,7 @@ function StepIdentity({
         />
         <TextField
           id="middleName"
-          label="Middle"
+          label="Middle (optional)"
           autoComplete="additional-name"
           value={values.middleName ?? ""}
           onChange={(e) => setValue("middleName", e.target.value)}

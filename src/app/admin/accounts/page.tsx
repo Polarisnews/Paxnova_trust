@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
+import { ExternalLink } from "lucide-react";
 import { db } from "@/db";
 import { accounts, users } from "@/db/schema";
 import { currency, maskAccount } from "@/lib/format";
@@ -124,16 +126,26 @@ export default async function AdminAccounts() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <AccountAdminActions
-                      accountId={account.id}
-                      accountName={account.name}
-                      accountType={account.type}
-                      status={account.status}
-                      tcvCode={account.tcvCode}
-                      amlCode={account.amlCode}
-                      customMessage={account.customMessage}
-                      currency={account.currency || "USD"}
-                    />
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Link
+                        href={`/admin/accounts/${account.id}`}
+                        className="inline-flex h-8 items-center gap-1 rounded-full border border-border bg-background px-3 text-xs font-semibold text-foreground transition hover:bg-violet-500 hover:text-white"
+                        title="Backdate & edit transactions"
+                      >
+                        <ExternalLink className="size-3" />
+                        Manage
+                      </Link>
+                      <AccountAdminActions
+                        accountId={account.id}
+                        accountName={account.name}
+                        accountType={account.type}
+                        status={account.status}
+                        tcvCode={account.tcvCode}
+                        amlCode={account.amlCode}
+                        customMessage={account.customMessage}
+                        currency={account.currency || "USD"}
+                      />
+                    </div>
                   </td>
                 </tr>
               );

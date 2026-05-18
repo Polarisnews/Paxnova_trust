@@ -397,28 +397,23 @@ export async function addAccountTransactionAction(
 // Generate transaction history — deterministic templates, no LLM call.
 // ──────────────────────────────────────────────────────────────────────
 
-const VALID_INDUSTRIES: IndustryKey[] = [
+const VALID_INDUSTRIES = [
   "plumbing",
   "construction",
   "retail",
   "restaurant",
   "tech-services",
   "personal",
-];
+] as const;
+type ValidIndustry = (typeof VALID_INDUSTRIES)[number];
 
 const generateHistorySchema = z.object({
   accountId: z.coerce.number().int().positive(),
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a from date"),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a to date"),
   count: z.coerce.number().int().min(1).max(500),
-  industry: z.enum([
-    "plumbing",
-    "construction",
-    "retail",
-    "restaurant",
-    "tech-services",
-    "personal",
-  ]),
+  // `industries` is parsed manually from formData.getAll() because zod can't
+  // pull array values out of a FormData object directly.
   style: z.enum(["business", "personal"]),
   seed: z.string().trim().max(60).optional().or(z.literal("")),
 });
@@ -432,6 +427,8 @@ export type GenerateHistoryState = AdminState & {
     openingBalance: number;
     finalBalance: number;
   };
+  /** Per-industry breakdown — count emitted from each selected industry. */
+  perIndustry?: { industry: string; count: number }[];
 };
 
 export async function generateHistoryAction(
@@ -439,12 +436,32 @@ export async function generateHistoryAction(
   formData: FormData
 ): Promise<GenerateHistoryState> {
   await requireAdmin();
+
+  // Parse industries array from FormData (admin can pick 1–6 via checkbox UI).
+  const rawIndustries = formData.getAll("industries").map(String);
+  const industries = rawIndustries.filter((s): s is ValidIndustry =>
+    (VALID_INDUSTRIES as readonly string[]).includes(s),
+  );
+  if (industries.length === 0) {
+    return {
+      ok: false,
+      message: "Pick at least one industry.",
+      fieldErrors: { industries: "Pick at least one industry" },
+    };
+  }
+  if (industries.length > VALID_INDUSTRIES.length) {
+    return {
+      ok: false,
+      message: "Too many industries selected.",
+      fieldErrors: { industries: "Pick fewer industries" },
+    };
+  }
+
   const parsed = generateHistorySchema.safeParse({
     accountId: formData.get("accountId"),
     from: formData.get("from"),
     to: formData.get("to"),
     count: formData.get("count"),
-    industry: formData.get("industry"),
     style: formData.get("style"),
     seed: formData.get("seed") || undefined,
   });
@@ -492,24 +509,65 @@ export async function generateHistoryAction(
 
   const openingBalance = acct.balance;
 
-  const result = generateTransactions({
-    accountId: d.accountId,
-    industry: d.industry as IndustryKey,
-    style: d.style as Style,
-    from: fromTime,
-    to: toTime,
-    count: d.count,
-    openingBalance,
-    isCreditAccount: acct.type === "credit",
-    seed: d.seed || undefined,
+  // Split the requested count across the selected industries. Earlier
+  // industries get the remainder so totals always equal the requested count.
+  const base = Math.floor(d.count / industries.length);
+  const remainder = d.count - base * industries.length;
+  const perIndustry: { industry: string; count: number }[] = [];
+  const allRows: ReturnType<typeof generateTransactions>["rows"] = [];
+  let runningBalance = openingBalance;
+  let totalCredits = 0;
+  let totalDebits = 0;
+
+  for (let i = 0; i < industries.length; i++) {
+    const chunkSize = base + (i < remainder ? 1 : 0);
+    if (chunkSize === 0) {
+      perIndustry.push({ industry: industries[i], count: 0 });
+      continue;
+    }
+    const result = generateTransactions({
+      accountId: d.accountId,
+      industry: industries[i] as IndustryKey,
+      style: d.style as Style,
+      from: fromTime,
+      to: toTime,
+      count: chunkSize,
+      openingBalance: runningBalance,
+      isCreditAccount: acct.type === "credit",
+      // Seed is varied per industry so two runs with the same seed still
+      // give industry-specific output rather than identical rows.
+      seed: d.seed ? `${d.seed}:${industries[i]}` : undefined,
+    });
+    allRows.push(...result.rows);
+    runningBalance = result.finalBalance;
+    totalCredits += result.totalCredits;
+    totalDebits += result.totalDebits;
+    perIndustry.push({
+      industry: industries[i],
+      count: result.rows.length,
+    });
+  }
+
+  // Combine across industries, re-sort by `createdAt`, and recompute the
+  // balance chain so balance_after stays accurate across the merged stream.
+  allRows.sort((a, b) => {
+    const ta = (a.createdAt as unknown as Date).getTime();
+    const tb = (b.createdAt as unknown as Date).getTime();
+    return ta - tb;
   });
+  let rebal = openingBalance;
+  for (const r of allRows) {
+    rebal += r.type === "credit" ? r.amount : -r.amount;
+    r.balanceAfter = Number(rebal.toFixed(2));
+  }
+  const finalBalance = Number(rebal.toFixed(2));
 
   db.transaction(() => {
-    for (const row of result.rows) {
+    for (const row of allRows) {
       db.insert(transactions).values(row).run();
     }
     db.update(accounts)
-      .set({ balance: result.finalBalance })
+      .set({ balance: finalBalance })
       .where(eq(accounts.id, d.accountId))
       .run();
   });
@@ -520,15 +578,18 @@ export async function generateHistoryAction(
 
   return {
     ok: true,
-    message: `Generated ${result.rows.length} transactions.`,
+    message: `Generated ${allRows.length} transactions across ${industries.length} ${
+      industries.length === 1 ? "industry" : "industries"
+    }.`,
     summary: {
-      generated: result.rows.length,
-      credits: result.totalCredits,
-      debits: result.totalDebits,
-      netChange: result.netChange,
+      generated: allRows.length,
+      credits: Number(totalCredits.toFixed(2)),
+      debits: Number(totalDebits.toFixed(2)),
+      netChange: Number((totalCredits - totalDebits).toFixed(2)),
       openingBalance,
-      finalBalance: result.finalBalance,
+      finalBalance,
     },
+    perIndustry,
   };
 }
 
@@ -572,6 +633,184 @@ export async function adjustBalanceAction(
 
   revalidatePath("/admin/accounts");
   return { ok: true, message: "Balance adjusted." };
+}
+
+// ─── Backdate an account's open date ─────────────────────────────────
+const backdateSchema = z.object({
+  accountId: z.coerce.number().int().positive(),
+  openedAt: z.string().min(8), // YYYY-MM-DD or full ISO
+});
+
+export async function backdateAccountAction(
+  _prev: AdminState,
+  formData: FormData
+): Promise<AdminState> {
+  await requireAdmin();
+  const parsed = backdateSchema.safeParse({
+    accountId: formData.get("accountId"),
+    openedAt: formData.get("openedAt"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: "Pick a valid date." };
+  }
+  const date = new Date(parsed.data.openedAt);
+  if (Number.isNaN(date.getTime())) {
+    return { ok: false, message: "That date isn't valid." };
+  }
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (date.getTime() > tomorrow.getTime()) {
+    return { ok: false, message: "Open date can't be in the future." };
+  }
+  const acct = db
+    .select()
+    .from(accounts)
+    .where(eq(accounts.id, parsed.data.accountId))
+    .get();
+  if (!acct) return { ok: false, message: "Account not found." };
+
+  db.update(accounts)
+    .set({ createdAt: date })
+    .where(eq(accounts.id, parsed.data.accountId))
+    .run();
+
+  revalidatePath("/admin/accounts");
+  revalidatePath(`/admin/accounts/${parsed.data.accountId}`);
+  revalidatePath(`/dashboard/accounts/${parsed.data.accountId}`);
+  return {
+    ok: true,
+    message: `Open date set to ${date.toLocaleDateString()}.`,
+  };
+}
+
+// ─── Update / delete a single transaction ────────────────────────────
+const editTxSchema = z.object({
+  transactionId: z.coerce.number().int().positive(),
+  type: z.enum(["debit", "credit"]),
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  description: z.string().trim().min(1, "Required").max(200),
+  category: z.string().trim().max(80).optional().or(z.literal("")),
+  counterparty: z.string().trim().max(160).optional().or(z.literal("")),
+  createdAt: z.string().min(8),
+});
+
+export async function updateTransactionAction(
+  _prev: AdminState,
+  formData: FormData
+): Promise<AdminState> {
+  await requireAdmin();
+  const parsed = editTxSchema.safeParse({
+    transactionId: formData.get("transactionId"),
+    type: formData.get("type"),
+    amount: formData.get("amount"),
+    description: formData.get("description"),
+    category: formData.get("category"),
+    counterparty: formData.get("counterparty"),
+    createdAt: formData.get("createdAt"),
+  });
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const i of parsed.error.issues) {
+      const p = i.path[0]?.toString();
+      if (p && !fieldErrors[p]) fieldErrors[p] = i.message;
+    }
+    return {
+      ok: false,
+      message: "Check the highlighted fields.",
+      fieldErrors,
+    };
+  }
+  const newDate = new Date(parsed.data.createdAt);
+  if (Number.isNaN(newDate.getTime())) {
+    return {
+      ok: false,
+      message: "Invalid date.",
+      fieldErrors: { createdAt: "Pick a valid date" },
+    };
+  }
+  const tx = db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.id, parsed.data.transactionId))
+    .get();
+  if (!tx) return { ok: false, message: "Transaction not found." };
+
+  db.transaction(() => {
+    db.update(transactions)
+      .set({
+        type: parsed.data.type,
+        amount: Number(parsed.data.amount.toFixed(2)),
+        description: parsed.data.description,
+        category: parsed.data.category || null,
+        counterparty: parsed.data.counterparty || null,
+        createdAt: newDate,
+      })
+      .where(eq(transactions.id, tx.id))
+      .run();
+    rebalanceAccount(tx.accountId);
+  });
+
+  revalidatePath("/admin/accounts");
+  revalidatePath(`/admin/accounts/${tx.accountId}`);
+  revalidatePath(`/dashboard/accounts/${tx.accountId}`);
+  revalidatePath(`/dashboard/transactions/${tx.id}`);
+  return { ok: true, message: "Transaction updated everywhere." };
+}
+
+export async function deleteTransactionAction(
+  transactionId: number
+): Promise<AdminState> {
+  await requireAdmin();
+  const tx = db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.id, transactionId))
+    .get();
+  if (!tx) return { ok: false, message: "Transaction not found." };
+
+  db.transaction(() => {
+    db.delete(transactions).where(eq(transactions.id, transactionId)).run();
+    rebalanceAccount(tx.accountId);
+  });
+
+  revalidatePath("/admin/accounts");
+  revalidatePath(`/admin/accounts/${tx.accountId}`);
+  revalidatePath(`/dashboard/accounts/${tx.accountId}`);
+  return { ok: true, message: "Transaction deleted." };
+}
+
+/**
+ * Replay every transaction for an account chronologically, fixing the
+ * `balance_after` chain on every row and the account's current balance.
+ * Call from inside a db.transaction() after any insert/update/delete.
+ */
+function rebalanceAccount(accountId: number): void {
+  const all = db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.accountId, accountId))
+    .all();
+  all.sort((a, b) => {
+    const ta = (a.createdAt as unknown as Date).getTime();
+    const tb = (b.createdAt as unknown as Date).getTime();
+    if (ta !== tb) return ta - tb;
+    return a.id - b.id;
+  });
+  let running = 0;
+  for (const t of all) {
+    running += t.type === "credit" ? t.amount : -t.amount;
+    const rounded = Number(running.toFixed(2));
+    if (rounded !== t.balanceAfter) {
+      db.update(transactions)
+        .set({ balanceAfter: rounded })
+        .where(eq(transactions.id, t.id))
+        .run();
+    }
+  }
+  db.update(accounts)
+    .set({ balance: Number(running.toFixed(2)) })
+    .where(eq(accounts.id, accountId))
+    .run();
 }
 
 export async function setUserRoleAction(

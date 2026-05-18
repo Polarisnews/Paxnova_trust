@@ -344,6 +344,16 @@ export async function signupAction(
     })
     .run();
 
+  // Auto-seed the standard payee catalog + 12 months of payment history so
+  // /dashboard/pay-bills isn't empty on day one. Wrapped in try/catch so a
+  // seeding hiccup never blocks account creation.
+  try {
+    const { seedPayeesForUser } = await import("@/lib/payee-seed");
+    seedPayeesForUser(user.id);
+  } catch (err) {
+    console.error("[signup] payee seed failed (non-fatal):", err);
+  }
+
   // Persist uploaded KYC documents. Failures here are logged but don't block
   // signup — the admin can request re-upload during review.
   for (const slot of SIGNUP_DOCS) {

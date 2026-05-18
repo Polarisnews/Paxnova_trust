@@ -54,17 +54,6 @@ export default async function SignInPage(props: {
           </p>
         </div>
 
-        <div className="mt-6 rounded-xl bg-muted/60 p-4 text-xs text-muted-foreground">
-          <p className="font-semibold text-foreground">Demo accounts</p>
-          <p className="mt-1">
-            User · <code className="font-mono">demo</code> /{" "}
-            <code className="font-mono">Demo123!</code>
-          </p>
-          <p className="mt-0.5">
-            Admin · <code className="font-mono">admin</code> /{" "}
-            <code className="font-mono">Admin123!</code>
-          </p>
-        </div>
       </div>
 
       <aside className="w-full max-w-md space-y-6 lg:pt-2">

@@ -45,8 +45,13 @@ const initial: ApplyState = { ok: false };
 const PRODUCTS = [
   { value: "checking", label: "Apex Checking" },
   { value: "savings", label: "Reserve High-Yield Savings" },
+  { value: "cd", label: "Certificate of Deposit (CD)" },
   { value: "credit-card", label: "Signature Rewards Card" },
   { value: "mortgage", label: "Mortgage Pre-approval" },
+  { value: "heloc", label: "Home Equity Line of Credit (HELOC)" },
+  { value: "auto-refi", label: "Auto refinance" },
+  { value: "brokerage", label: "Self-directed investing" },
+  { value: "ira", label: "Retirement (IRA)" },
   { value: "business", label: "Business Operating Account" },
 ] as const;
 
@@ -207,6 +212,48 @@ export function ApplyForm({
       }
     } else if (id.startsWith("product:")) {
       Object.assign(errs, validateProductStep(product, values, owners));
+      if (product === "cd") {
+        if (!(values.cdTerm ?? "").trim()) errs.cdTerm = "Pick a term";
+        const dep = Number(values.cdDeposit);
+        if (!dep || dep < 500)
+          errs.cdDeposit = "Minimum opening deposit is $500";
+        if (!(values.atMaturity ?? "").trim()) errs.atMaturity = "Pick an option";
+      } else if (product === "heloc") {
+        for (const f of [
+          "propertyAddress",
+          "propertyCity",
+          "propertyState",
+          "propertyZip",
+          "estimatedValue",
+          "existingMortgageBalance",
+          "requestedLineAmount",
+        ]) {
+          if (!(values[f] ?? "").trim()) errs[f] = "Required";
+        }
+      } else if (product === "auto-refi") {
+        for (const f of [
+          "vehicleYear",
+          "vehicleMake",
+          "vehicleModel",
+          "currentLender",
+          "currentPayoff",
+          "requestedLoanAmount",
+        ]) {
+          if (!(values[f] ?? "").trim()) errs[f] = "Required";
+        }
+      } else if (product === "brokerage" || product === "ira") {
+        for (const f of [
+          "investmentExperience",
+          "riskTolerance",
+          "investmentTimeHorizon",
+          "primaryObjective",
+        ]) {
+          if (!(values[f] ?? "").trim()) errs[f] = "Required";
+        }
+        if (product === "ira" && !(values.iraType ?? "").trim()) {
+          errs.iraType = "Pick an IRA type";
+        }
+      }
     } else if (id === "documents") {
       // Documents are optional at signup — admin can request specific docs
       // during KYC review. We still render the upload slots; the user just
@@ -363,6 +410,13 @@ function productStepFor(product: string): WizardStep {
       subtitle:
         "URLA-style intake. We'll pull credit only after you authorize it on the next step.",
     };
+  if (product === "heloc")
+    return {
+      id: "product:heloc",
+      title: "Your home & existing mortgage",
+      subtitle:
+        "We need a current snapshot of your home's value and what you still owe so we can calculate your line.",
+    };
   if (product === "business")
     return {
       id: "product:business",
@@ -376,6 +430,30 @@ function productStepFor(product: string): WizardStep {
       title: "Credit profile & request",
       subtitle:
         "Regulation Z requires us to evaluate your ability to repay before issuing credit.",
+    };
+  if (product === "cd")
+    return {
+      id: "product:cd",
+      title: "Pick your CD term & deposit",
+      subtitle:
+        "CDs lock the rate the day you open them. Funds are restricted until maturity.",
+    };
+  if (product === "auto-refi")
+    return {
+      id: "product:auto-refi",
+      title: "Your vehicle & existing loan",
+      subtitle:
+        "We need to identify the vehicle and the existing lienholder so we can issue the payoff and retitle.",
+    };
+  if (product === "brokerage" || product === "ira")
+    return {
+      id: `product:${product}`,
+      title:
+        product === "ira"
+          ? "Retirement account preferences"
+          : "Investment profile",
+      subtitle:
+        "FINRA Rule 2111 (Suitability) requires us to understand your investment objectives before opening a brokerage account.",
     };
   return {
     id: `product:${product}`,
@@ -781,6 +859,491 @@ function ProductFields({
       {(product === "checking" || product === "savings") && (
         <FundingFields values={values} setValue={setValue} />
       )}
+      {product === "cd" && (
+        <CdFields values={values} setValue={setValue} errors={errors} />
+      )}
+      {product === "heloc" && (
+        <HelocFields values={values} setValue={setValue} errors={errors} />
+      )}
+      {product === "auto-refi" && (
+        <AutoRefiFields values={values} setValue={setValue} errors={errors} />
+      )}
+      {(product === "brokerage" || product === "ira") && (
+        <InvestingFields
+          product={product}
+          values={values}
+          setValue={setValue}
+          errors={errors}
+        />
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// CD — fixed-rate deposit account. The unique fields are term, opening
+// deposit, and what to do at maturity.
+// ──────────────────────────────────────────────────────────────────────
+
+function CdFields({
+  values,
+  setValue,
+  errors,
+}: {
+  values: Values;
+  setValue: (n: string, v: string) => void;
+  errors: Record<string, string>;
+}) {
+  const CD_TERMS = [
+    { value: "6m", label: "6 months · 4.55% APY" },
+    { value: "9m", label: "9 months · 4.80% APY" },
+    { value: "12m", label: "12 months · 5.20% APY" },
+    { value: "18m", label: "18 months · 5.05% APY" },
+    { value: "24m", label: "24 months · 4.85% APY" },
+    { value: "60m", label: "60 months · 4.55% APY" },
+  ];
+  const AT_MATURITY = [
+    { value: "renew", label: "Auto-renew at then-current rate" },
+    { value: "checking", label: "Move funds + interest to my checking" },
+    { value: "savings", label: "Move funds + interest to my savings" },
+    { value: "decide", label: "Let me decide at maturity (10-day grace)" },
+  ];
+  return (
+    <div className="space-y-4">
+      <SelectField
+        id="cdTerm"
+        label="CD term"
+        required
+        options={CD_TERMS}
+        value={values.cdTerm ?? ""}
+        onChange={(e) => setValue("cdTerm", e.target.value)}
+        error={errors.cdTerm}
+        hint="Rates locked the day your CD opens."
+      />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <TextField
+          id="cdDeposit"
+          label="Opening deposit"
+          required
+          type="number"
+          min={500}
+          step={100}
+          placeholder="500"
+          value={values.cdDeposit ?? ""}
+          onChange={(e) => setValue("cdDeposit", e.target.value)}
+          error={errors.cdDeposit}
+          hint="Minimum $500. Funds locked until maturity."
+        />
+        <SelectField
+          id="fundingSource"
+          label="Funding source"
+          options={FUNDING_SOURCES}
+          value={values.fundingSource ?? ""}
+          onChange={(e) => setValue("fundingSource", e.target.value)}
+        />
+      </div>
+      <SelectField
+        id="atMaturity"
+        label="At maturity"
+        required
+        options={AT_MATURITY}
+        value={values.atMaturity ?? ""}
+        onChange={(e) => setValue("atMaturity", e.target.value)}
+        error={errors.atMaturity}
+      />
+      <NotesField values={values} setValue={setValue} />
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// HELOC — different from a mortgage. Needs current valuation, existing
+// lien balance, and the requested line amount. Used to compute CLTV.
+// ──────────────────────────────────────────────────────────────────────
+
+function HelocFields({
+  values,
+  setValue,
+  errors,
+}: {
+  values: Values;
+  setValue: (n: string, v: string) => void;
+  errors: Record<string, string>;
+}) {
+  return (
+    <div className="space-y-5">
+      <fieldset className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
+        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          The property
+        </legend>
+        <TextField
+          id="propertyAddress"
+          label="Property address"
+          required
+          value={values.propertyAddress ?? ""}
+          onChange={(e) => setValue("propertyAddress", e.target.value)}
+          error={errors.propertyAddress}
+        />
+        <div className="grid gap-3 sm:grid-cols-6">
+          <TextField
+            id="propertyCity"
+            label="City"
+            required
+            value={values.propertyCity ?? ""}
+            onChange={(e) => setValue("propertyCity", e.target.value)}
+            error={errors.propertyCity}
+            wrapperClassName="sm:col-span-3"
+          />
+          <SelectField
+            id="propertyState"
+            label="State"
+            required
+            options={US_STATES}
+            value={values.propertyState ?? ""}
+            onChange={(e) => setValue("propertyState", e.target.value)}
+            error={errors.propertyState}
+            wrapperClassName="sm:col-span-2"
+          />
+          <TextField
+            id="propertyZip"
+            label="ZIP"
+            required
+            inputMode="numeric"
+            maxLength={10}
+            value={values.propertyZip ?? ""}
+            onChange={(e) => setValue("propertyZip", e.target.value)}
+            error={errors.propertyZip}
+            wrapperClassName="sm:col-span-1"
+          />
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
+        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Current equity
+        </legend>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <TextField
+            id="estimatedValue"
+            label="Estimated home value"
+            required
+            type="number"
+            min={50000}
+            step={5000}
+            value={values.estimatedValue ?? ""}
+            onChange={(e) => setValue("estimatedValue", e.target.value)}
+            error={errors.estimatedValue}
+            hint="Recent Zillow or appraisal estimate."
+          />
+          <TextField
+            id="existingMortgageBalance"
+            label="Existing mortgage balance"
+            required
+            type="number"
+            min={0}
+            step={1000}
+            value={values.existingMortgageBalance ?? ""}
+            onChange={(e) =>
+              setValue("existingMortgageBalance", e.target.value)
+            }
+            error={errors.existingMortgageBalance}
+            hint="From your latest statement."
+          />
+          <TextField
+            id="existingHelocBalance"
+            label="Existing HELOC balance (optional)"
+            type="number"
+            min={0}
+            step={1000}
+            value={values.existingHelocBalance ?? ""}
+            onChange={(e) => setValue("existingHelocBalance", e.target.value)}
+          />
+        </div>
+        <TextField
+          id="requestedLineAmount"
+          label="Requested line amount"
+          required
+          type="number"
+          min={10000}
+          step={1000}
+          value={values.requestedLineAmount ?? ""}
+          onChange={(e) => setValue("requestedLineAmount", e.target.value)}
+          error={errors.requestedLineAmount}
+          hint="We'll cap at 85% combined LTV after appraisal."
+        />
+        <TextField
+          id="intendedUseHeloc"
+          label="Intended use (optional)"
+          placeholder="Home improvement, debt consolidation, tuition…"
+          value={values.intendedUseHeloc ?? ""}
+          onChange={(e) => setValue("intendedUseHeloc", e.target.value)}
+        />
+      </fieldset>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Auto refinance — vehicle identification + existing lien data.
+// ──────────────────────────────────────────────────────────────────────
+
+function AutoRefiFields({
+  values,
+  setValue,
+  errors,
+}: {
+  values: Values;
+  setValue: (n: string, v: string) => void;
+  errors: Record<string, string>;
+}) {
+  return (
+    <div className="space-y-5">
+      <fieldset className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
+        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Your vehicle
+        </legend>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <TextField
+            id="vehicleYear"
+            label="Year"
+            required
+            type="number"
+            min={2010}
+            max={2027}
+            value={values.vehicleYear ?? ""}
+            onChange={(e) => setValue("vehicleYear", e.target.value)}
+            error={errors.vehicleYear}
+          />
+          <TextField
+            id="vehicleMake"
+            label="Make"
+            required
+            placeholder="e.g. Toyota"
+            value={values.vehicleMake ?? ""}
+            onChange={(e) => setValue("vehicleMake", e.target.value)}
+            error={errors.vehicleMake}
+          />
+          <TextField
+            id="vehicleModel"
+            label="Model"
+            required
+            placeholder="e.g. RAV4"
+            value={values.vehicleModel ?? ""}
+            onChange={(e) => setValue("vehicleModel", e.target.value)}
+            error={errors.vehicleModel}
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TextField
+            id="vehicleVin"
+            label="VIN (optional now)"
+            maxLength={17}
+            placeholder="17-character VIN"
+            value={values.vehicleVin ?? ""}
+            onChange={(e) =>
+              setValue("vehicleVin", e.target.value.toUpperCase())
+            }
+            hint="Required before funding — pull from your dashboard or registration."
+          />
+          <TextField
+            id="vehicleMileage"
+            label="Current mileage"
+            type="number"
+            min={0}
+            value={values.vehicleMileage ?? ""}
+            onChange={(e) => setValue("vehicleMileage", e.target.value)}
+          />
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
+        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Existing loan
+        </legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TextField
+            id="currentLender"
+            label="Current lender"
+            required
+            value={values.currentLender ?? ""}
+            onChange={(e) => setValue("currentLender", e.target.value)}
+            error={errors.currentLender}
+          />
+          <TextField
+            id="currentAccountNumber"
+            label="Current loan account number"
+            value={values.currentAccountNumber ?? ""}
+            onChange={(e) => setValue("currentAccountNumber", e.target.value)}
+            hint="We'll handle the payoff and title transfer."
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <TextField
+            id="currentPayoff"
+            label="Current payoff amount"
+            required
+            type="number"
+            min={7500}
+            step={100}
+            value={values.currentPayoff ?? ""}
+            onChange={(e) => setValue("currentPayoff", e.target.value)}
+            error={errors.currentPayoff}
+          />
+          <TextField
+            id="currentRate"
+            label="Current APR (%)"
+            type="number"
+            step={0.01}
+            value={values.currentRate ?? ""}
+            onChange={(e) => setValue("currentRate", e.target.value)}
+          />
+          <TextField
+            id="requestedLoanAmount"
+            label="New loan amount"
+            required
+            type="number"
+            min={7500}
+            step={100}
+            value={values.requestedLoanAmount ?? ""}
+            onChange={(e) => setValue("requestedLoanAmount", e.target.value)}
+            error={errors.requestedLoanAmount}
+          />
+        </div>
+      </fieldset>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Investing / Retirement — FINRA suitability profile.
+// ──────────────────────────────────────────────────────────────────────
+
+function InvestingFields({
+  product,
+  values,
+  setValue,
+  errors,
+}: {
+  product: string;
+  values: Values;
+  setValue: (n: string, v: string) => void;
+  errors: Record<string, string>;
+}) {
+  const EXPERIENCE = [
+    { value: "none", label: "None — first time investing" },
+    { value: "limited", label: "Limited — a handful of trades or funds" },
+    { value: "good", label: "Good — managed my own portfolio for years" },
+    { value: "extensive", label: "Extensive — including options/derivatives" },
+  ];
+  const RISK = [
+    { value: "conservative", label: "Conservative — preserve capital" },
+    { value: "moderate", label: "Moderate — balanced growth & income" },
+    { value: "growth", label: "Growth — accept volatility for long-term gain" },
+    {
+      value: "aggressive",
+      label: "Aggressive — concentrate in higher-volatility assets",
+    },
+  ];
+  const HORIZON = [
+    { value: "short", label: "< 3 years" },
+    { value: "medium", label: "3 – 10 years" },
+    { value: "long", label: "10 – 20 years" },
+    { value: "very-long", label: "20+ years" },
+  ];
+  const OBJECTIVE = [
+    { value: "income", label: "Current income" },
+    { value: "capital-preservation", label: "Capital preservation" },
+    { value: "balanced", label: "Balanced growth & income" },
+    { value: "growth", label: "Long-term growth" },
+    { value: "speculation", label: "Speculation / active trading" },
+  ];
+  const IRA_TYPES = [
+    { value: "traditional", label: "Traditional IRA" },
+    { value: "roth", label: "Roth IRA" },
+    { value: "rollover", label: "Rollover IRA (from a 401k)" },
+    { value: "sep", label: "SEP IRA (self-employed)" },
+  ];
+  return (
+    <div className="space-y-4">
+      {product === "ira" && (
+        <SelectField
+          id="iraType"
+          label="IRA type"
+          required
+          options={IRA_TYPES}
+          value={values.iraType ?? ""}
+          onChange={(e) => setValue("iraType", e.target.value)}
+          error={errors.iraType}
+        />
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SelectField
+          id="investmentExperience"
+          label="Investment experience"
+          required
+          options={EXPERIENCE}
+          value={values.investmentExperience ?? ""}
+          onChange={(e) => setValue("investmentExperience", e.target.value)}
+          error={errors.investmentExperience}
+        />
+        <SelectField
+          id="riskTolerance"
+          label="Risk tolerance"
+          required
+          options={RISK}
+          value={values.riskTolerance ?? ""}
+          onChange={(e) => setValue("riskTolerance", e.target.value)}
+          error={errors.riskTolerance}
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SelectField
+          id="investmentTimeHorizon"
+          label="Time horizon"
+          required
+          options={HORIZON}
+          value={values.investmentTimeHorizon ?? ""}
+          onChange={(e) => setValue("investmentTimeHorizon", e.target.value)}
+          error={errors.investmentTimeHorizon}
+        />
+        <SelectField
+          id="primaryObjective"
+          label="Primary investment objective"
+          required
+          options={OBJECTIVE}
+          value={values.primaryObjective ?? ""}
+          onChange={(e) => setValue("primaryObjective", e.target.value)}
+          error={errors.primaryObjective}
+        />
+      </div>
+      {product === "brokerage" && (
+        <FieldShell
+          id="optionsTradingDesired"
+          label="Want to enable options trading?"
+        >
+          <label className="flex items-start gap-2 rounded-lg border border-border bg-card px-3 py-2.5 text-xs">
+            <input
+              id="optionsTradingDesired"
+              name="optionsTradingDesired"
+              type="checkbox"
+              className="mt-0.5 size-4 accent-violet-500"
+              checked={values.optionsTradingDesired === "on"}
+              onChange={(e) =>
+                setValue(
+                  "optionsTradingDesired",
+                  e.target.checked ? "on" : "",
+                )
+              }
+            />
+            <span>
+              Yes — I&apos;d like to apply for Level 1 (covered calls / cash-secured puts).
+              I understand options trading involves significant risk and may not
+              be appropriate for everyone.
+            </span>
+          </label>
+        </FieldShell>
+      )}
+      <NotesField values={values} setValue={setValue} />
     </div>
   );
 }

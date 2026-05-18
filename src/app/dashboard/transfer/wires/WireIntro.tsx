@@ -46,11 +46,21 @@ export function WireIntro() {
           />
           <span>
             I&apos;ve read and agree to the{" "}
-            <Link href="/about" className="text-violet-500 underline">
-              Online Wire Transfer terms
+            <Link
+              href="/legal/wire-transfer-terms"
+              target="_blank"
+              rel="noreferrer"
+              className="text-violet-500 underline"
+            >
+              Online Wire Transfer Terms
             </Link>{" "}
-            and{" "}
-            <Link href="/about" className="text-violet-500 underline">
+            and the{" "}
+            <Link
+              href="/legal/global-transfer-services"
+              target="_blank"
+              rel="noreferrer"
+              className="text-violet-500 underline"
+            >
               Paxnova Trust Global Transfer Services Agreement
             </Link>
             .

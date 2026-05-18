@@ -85,7 +85,7 @@ export async function buildStatementPdf(input: StatementInput): Promise<Blob> {
   );
 
   // Account block
-  doc.setDrawColor(220);
+  doc.setDrawColor(220, 220, 220);
   doc.line(margin, 92, pageWidth - margin, 92);
 
   doc.setFont("helvetica", "bold");
@@ -120,8 +120,8 @@ export async function buildStatementPdf(input: StatementInput): Promise<Blob> {
   let y = 160;
   summary.forEach((s, i) => {
     const x = margin + cellW * i;
-    doc.setDrawColor(230);
-    doc.setFillColor(248);
+    doc.setDrawColor(230, 230, 230);
+    doc.setFillColor(248, 248, 248);
     doc.roundedRect(x, y, cellW - 8, 60, 6, 6, "FD");
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);

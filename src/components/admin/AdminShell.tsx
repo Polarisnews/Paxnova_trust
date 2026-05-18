@@ -9,38 +9,54 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
   Send,
   ShieldAlert,
   Users,
   Wallet,
+  X,
 } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { MobileDrawer } from "@/components/ui/mobile-drawer";
 import { Logo } from "@/components/brand/Logo";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/app/actions/auth";
 
-const nav = [
+type NavEntry = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** Optional key resolved by the AdminShell to a badge count. */
+  badge?: "openMessages";
+};
+
+const nav: NavEntry[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/accounts", label: "Accounts", icon: Wallet },
   { href: "/admin/applications", label: "Applications", icon: FileCheck },
-  { href: "/admin/cards/applications", label: "Card applications", icon: CreditCard },
+  {
+    href: "/admin/cards/applications",
+    label: "Card applications",
+    icon: CreditCard,
+  },
   { href: "/admin/wires", label: "Wires", icon: Send },
   { href: "/admin/cards", label: "Cards", icon: CreditCard },
+  {
+    href: "/admin/messages",
+    label: "Messages",
+    icon: MessageSquare,
+    badge: "openMessages",
+  },
 ];
 
 export function AdminShell({
   user,
+  openMessageCount = 0,
   children,
 }: {
   user: { firstName: string; lastName: string; email: string; role: string };
+  openMessageCount?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -51,11 +67,16 @@ export function AdminShell({
     setDrawerOpen(false);
   }, [pathname]);
 
+  const badgeValue: Record<string, number> = {
+    openMessages: openMessageCount,
+  };
+
   const navList = (
     <ul className="space-y-0.5">
-      {nav.map(({ href, label, icon: Icon }) => {
+      {nav.map(({ href, label, icon: Icon, badge }) => {
         const active =
           href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+        const count = badge ? badgeValue[badge] ?? 0 : 0;
         return (
           <li key={href}>
             <Link
@@ -67,8 +88,16 @@ export function AdminShell({
                   : "text-white/70 hover:bg-white/5 hover:text-white",
               )}
             >
-              <Icon className="size-4" />
-              {label}
+              <Icon className="size-4 shrink-0" />
+              <span className="flex-1 truncate">{label}</span>
+              {count > 0 && (
+                <span
+                  aria-label={`${count} open`}
+                  className="inline-flex min-w-[20px] items-center justify-center rounded-full bg-violet-500 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white"
+                >
+                  {count > 99 ? "99+" : count}
+                </span>
+              )}
             </Link>
           </li>
         );
@@ -139,38 +168,50 @@ export function AdminShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6 lg:px-8">
-          {/* Mobile: hamburger drawer trigger */}
-          <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-            <SheetTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="Open admin menu"
-                  className="inline-flex size-10 items-center justify-center rounded-full hover:bg-muted lg:hidden"
-                >
-                  <Menu className="size-5" />
-                </button>
-              }
-            />
-            <SheetContent
-              side="left"
-              className="w-full max-w-xs bg-navy-900 p-0 text-white"
-            >
-              <SheetHeader className="border-b border-white/10 px-5 py-4">
-                <SheetTitle className="flex items-center justify-between text-white">
-                  <Logo variant="mono-light" size={25} />
-                  <span className="inline-flex items-center gap-1 rounded-full bg-gold-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold-300">
-                    <ShieldAlert className="size-3" />
-                    Admin
-                  </span>
-                </SheetTitle>
-              </SheetHeader>
-              <nav className="px-3 py-4">
-                {navList}
-                {footerBlock}
-              </nav>
-            </SheetContent>
-          </Sheet>
+          {/* Mobile: hamburger drawer trigger (plain React state, no base-ui) */}
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open admin menu"
+            aria-haspopup="dialog"
+            aria-expanded={drawerOpen}
+            className="inline-flex size-11 items-center justify-center rounded-full hover:bg-muted active:scale-95 lg:hidden"
+          >
+            <Menu className="size-5" />
+          </button>
+
+          <MobileDrawer
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            side="left"
+            className="bg-navy-900 text-white"
+            labelledBy="admin-drawer-title"
+          >
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <div
+                id="admin-drawer-title"
+                className="flex items-center gap-3"
+              >
+                <Logo variant="mono-light" size={25} />
+                <span className="inline-flex items-center gap-1 rounded-full bg-gold-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold-300">
+                  <ShieldAlert className="size-3" />
+                  Admin
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close admin menu"
+                className="inline-flex size-10 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto px-3 py-4">
+              {navList}
+              {footerBlock}
+            </nav>
+          </MobileDrawer>
 
           <div className="flex items-center gap-2 lg:hidden">
             <Logo variant="mark" size={29} />

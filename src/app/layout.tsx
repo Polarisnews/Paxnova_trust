@@ -6,6 +6,8 @@ import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CommandPalette } from "@/components/layout/CommandPalette";
+import { MobileMarketingCTA } from "@/components/layout/MobileMarketingCTA";
+import { AccountWizard } from "@/components/layout/AccountWizard";
 import "./globals.css";
 
 const inter = Inter({
@@ -96,7 +98,7 @@ export default async function RootLayout({
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var t=localStorage.getItem('theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches;var r=t==='dark'||((!t||t==='system')&&p)?'dark':'light';var d=document.documentElement;d.classList.add(r);d.style.colorScheme=r;}catch(e){}})();",
+              "(function(){try{var t=localStorage.getItem('theme');var r=t==='dark'?'dark':'light';var d=document.documentElement;d.classList.add(r);d.style.colorScheme=r;}catch(e){var d=document.documentElement;d.classList.add('light');d.style.colorScheme='light';}})();",
           }}
         />
       </head>
@@ -107,6 +109,8 @@ export default async function RootLayout({
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
+            <MobileMarketingCTA />
+            <AccountWizard />
           </div>
           <Toaster richColors position="top-right" />
         </ThemeProvider>

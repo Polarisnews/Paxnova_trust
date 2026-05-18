@@ -82,9 +82,11 @@ function generatePan(network: "visa" | "mastercard" | "amex"): string {
   return partial + luhnCheckDigit(partial);
 }
 
-function generateCvv(network: "visa" | "mastercard" | "amex"): string {
-  const len = network === "amex" ? 4 : 3;
-  return Array.from({ length: len }, randomDigit).join("");
+function generateCvv(_network: "visa" | "mastercard" | "amex"): string {
+  // Always 3 digits. Amex's real-world CID is 4 digits, but for this build
+  // we standardize on a 3-digit CVV across every network so the UI and the
+  // physical card art stay consistent.
+  return Array.from({ length: 3 }, randomDigit).join("");
 }
 
 // ──────────────────────────────────────────────────────────────────────

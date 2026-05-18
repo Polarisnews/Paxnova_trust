@@ -96,7 +96,7 @@ export async function buildWireSlipPdf(input: WirePdfInput): Promise<Blob> {
     { align: "right" }
   );
 
-  doc.setDrawColor(220);
+  doc.setDrawColor(220, 220, 220);
   doc.line(margin, 92, pageWidth - margin, 92);
 
   // Status banner
@@ -135,7 +135,7 @@ export async function buildWireSlipPdf(input: WirePdfInput): Promise<Blob> {
     doc.setTextColor(110);
     doc.text(title.toUpperCase(), margin, y);
     y += 16;
-    doc.setDrawColor(230);
+    doc.setDrawColor(230, 230, 230);
     doc.line(margin, y - 6, pageWidth - margin, y - 6);
     doc.setTextColor(0);
     doc.setFont("helvetica", "normal");

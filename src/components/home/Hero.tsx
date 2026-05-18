@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import type { MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 
 const cards = [
   {
@@ -49,6 +49,20 @@ export function Hero() {
   const sx = useSpring(rotateX, { stiffness: 150, damping: 20 });
   const sy = useSpring(rotateY, { stiffness: 150, damping: 20 });
 
+  // Only mount the 3D card stack on lg+ viewports. Previously we used
+  // `hidden lg:block`, but the framer-motion children still ran their
+  // animations off-screen, consuming CPU + memory on mobile. Skipping
+  // the mount entirely saves both. SSR renders nothing (matches initial
+  // client render) so no hydration mismatch fires.
+  const [showCards, setShowCards] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setShowCards(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setShowCards(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   const onMove = (e: MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100 - 50;
@@ -64,11 +78,11 @@ export function Hero() {
   return (
     <section className="relative isolate overflow-hidden gradient-hero text-white">
       <div className="absolute inset-0 -z-10 opacity-30 bg-grid-fade pointer-events-none" />
-      <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 pt-24 pb-32 sm:px-6 lg:grid-cols-2 lg:px-8 lg:pt-32 lg:pb-40">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pt-16 pb-20 sm:px-6 sm:pt-20 sm:pb-24 lg:grid-cols-2 lg:gap-12 lg:px-8 lg:pt-32 lg:pb-40">
         <div>
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 20 }}
+            animate={{ y: 0 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur"
           >
@@ -77,10 +91,10 @@ export function Hero() {
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 24 }}
+            animate={{ y: 0 }}
             transition={{ duration: 0.7, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-6 font-display text-5xl font-semibold leading-[1.05] tracking-tight text-balance sm:text-6xl lg:text-7xl"
+            className="mt-5 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl lg:text-7xl"
           >
             Built for the
             <span className="block bg-gradient-to-r from-white via-violet-300 to-gold-300 bg-clip-text text-transparent">
@@ -89,52 +103,54 @@ export function Hero() {
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 16 }}
+            animate={{ y: 0 }}
             transition={{ duration: 0.7, delay: 0.15 }}
-            className="mt-6 max-w-xl text-lg text-white/75 text-pretty"
+            className="mt-5 max-w-xl text-base text-white/75 text-pretty sm:text-lg"
           >
             One account, every product. Earn 4.85% APY, send money in seconds,
             and bank with a team that&apos;s engineered for the next decade.
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 16 }}
+            animate={{ y: 0 }}
             transition={{ duration: 0.7, delay: 0.25 }}
-            className="mt-8 flex flex-wrap items-center gap-3"
+            className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
           >
-            <Link
-              href="/signup"
-              className="group inline-flex h-12 items-center gap-2 rounded-full bg-gold-500 px-6 text-sm font-semibold text-navy-900 shadow-glow-gold transition hover:bg-gold-300"
+            <button
+              type="button"
+              onClick={() =>
+                window.dispatchEvent(new CustomEvent("open-account-wizard"))
+              }
+              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gold-500 px-6 text-sm font-semibold text-navy-900 shadow-glow-gold transition hover:bg-gold-300 active:scale-95"
             >
               Open an account
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+            </button>
             <Link
               href="/personal"
-              className="inline-flex h-12 items-center gap-2 rounded-full border border-white/25 bg-white/5 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/25 bg-white/5 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10"
             >
               Explore products
             </Link>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-10 flex items-center gap-6 text-xs text-white/55"
+            initial={false}
+            className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/55"
           >
             <span>FDIC insured up to $250k</span>
-            <span className="size-1 rounded-full bg-white/30" />
+            <span className="hidden size-1 rounded-full bg-white/30 sm:inline-block" />
             <span>SOC 2 Type II</span>
-            <span className="size-1 rounded-full bg-white/30" />
+            <span className="hidden size-1 rounded-full bg-white/30 sm:inline-block" />
             <span>256-bit encryption</span>
           </motion.div>
         </div>
 
+        {showCards && (
         <div
-          className="relative mx-auto h-[420px] w-full max-w-lg [perspective:1400px]"
+          className="relative mx-auto hidden h-[420px] w-full max-w-lg [perspective:1400px] lg:block"
           onMouseMove={onMove}
           onMouseLeave={onLeave}
         >
@@ -207,6 +223,7 @@ export function Hero() {
             ))}
           </motion.div>
         </div>
+        )}
       </div>
     </section>
   );

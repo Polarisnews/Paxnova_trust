@@ -32,7 +32,7 @@ const STORAGE_KEY = "theme";
 const ThemeContext = createContext<Ctx | null>(null);
 
 function readStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "light";
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored === "light" || stored === "dark" || stored === "system") {
@@ -41,7 +41,9 @@ function readStoredTheme(): Theme {
   } catch {
     // private mode etc.
   }
-  return "system";
+  // Default to light — we intentionally ignore the OS dark preference so
+  // every first-time visitor sees the marketing brand in light.
+  return "light";
 }
 
 function systemPrefersDark(): boolean {
@@ -57,8 +59,8 @@ function applyClass(resolved: ResolvedTheme): void {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // SSR returns "system" / "light" — the real value lands after mount.
-  const [theme, setThemeState] = useState<Theme>("system");
+  // SSR + first paint both default to light. localStorage takes over on mount.
+  const [theme, setThemeState] = useState<Theme>("light");
   const [resolved, setResolved] = useState<ResolvedTheme>("light");
 
   // Hydrate from localStorage on mount.

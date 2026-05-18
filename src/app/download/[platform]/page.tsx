@@ -43,9 +43,9 @@ export default async function DownloadPage(props: {
     <div className="mx-auto flex min-h-[calc(100dvh-8rem)] max-w-3xl flex-col items-center justify-center px-4 py-16 sm:px-6">
       <div className="mb-6 flex items-center gap-3">
         {p === "ios" ? (
-          <AppleStoreBadge size="sm" href="#" />
+          <AppleStoreBadge size="sm" />
         ) : (
-          <GooglePlayBadge size="sm" href="#" />
+          <GooglePlayBadge size="sm" />
         )}
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           {platformName}

@@ -20,7 +20,9 @@ type WireStatus =
   | "pending_tcv"
   | "pending_aml"
   | "interrupted_custom"
-  | "rejected_frozen";
+  | "rejected_frozen"
+  | "approved"
+  | "rejected";
 
 const STAGES = [
   { label: "Validating wire details", ms: 700 },

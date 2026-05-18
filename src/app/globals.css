@@ -258,6 +258,33 @@
     }
   }
 
+  /* When the mobile marketing CTA is in the DOM, reserve room at the
+     bottom of the page so its sticky bar doesn't overlap the footer. */
+  @media (max-width: 767.98px) {
+    body:has(.mobile-cta-bar) {
+      padding-bottom: calc(env(safe-area-inset-bottom) + 4.75rem);
+    }
+  }
+
+  /* Used by the auto-scrolling reviews carousel so the scroll handle
+     doesn't appear on top of the cards (it would compete visually with
+     the gradient edge fades). */
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Indeterminate loading bar used by the store-maintenance dialog —
+     sweeps a colored block left-to-right across the parent track. */
+  @keyframes pn-progress-sweep {
+    0%   { transform: translateX(-100%); }
+    50%  { transform: translateX(50%); }
+    100% { transform: translateX(150%); }
+  }
+  .pn-progress-bar {
+    width: 40%;
+    animation: pn-progress-sweep 1.2s ease-in-out infinite;
+    will-change: transform;
+  }
+
   /* Marquee for rate ticker */
   @keyframes marquee {
     from { transform: translateX(0); }
@@ -272,20 +299,79 @@
 }
 
 /* ------------------------------------------------------------------
-   Paxnova Logo — entrance, ambient & hover animations
+   Top-nav trigger — gradient underline that animates in on hover/open.
+   The rest of the trigger styling is from the shadcn base component.
+   ------------------------------------------------------------------ */
+.pn-nav-trigger {
+  position: relative;
+  padding-inline: 0.85rem;
+  height: 2.5rem;
+  transition: color 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.pn-nav-trigger::after {
+  content: "";
+  position: absolute;
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: 0.35rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6E3FF3 0%, #D4AF37 100%);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
+  pointer-events: none;
+}
+.pn-nav-trigger:hover,
+.pn-nav-trigger[data-popup-open],
+.pn-nav-trigger[data-open] {
+  color: var(--color-violet-600);
+}
+:is(.dark) .pn-nav-trigger:hover,
+:is(.dark) .pn-nav-trigger[data-popup-open],
+:is(.dark) .pn-nav-trigger[data-open] {
+  color: var(--color-violet-300);
+}
+.pn-nav-trigger:hover::after,
+.pn-nav-trigger[data-popup-open]::after,
+.pn-nav-trigger[data-open]::after {
+  transform: scaleX(1);
+}
+
+/* ------------------------------------------------------------------
+   Paxnova Logo — "Aurora Vault"
+   Rotating conic-gradient orb · shimmer sweep · heavy Geist-Black P ·
+   3D-tilt hover · wordmark sheen. Mono variants stay flat for PDFs.
    ------------------------------------------------------------------ */
 
-@keyframes pn-base-pop {
-  from { opacity: 0; transform: scale(0.82); }
+@keyframes pn-mark-pop {
+  from { opacity: 0; transform: scale(0.78); }
   to   { opacity: 1; transform: scale(1); }
 }
+@keyframes pn-orb-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pn-orb-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pn-shimmer-sweep {
+  0%   { transform: translateX(-130%) skewX(-20deg); opacity: 0; }
+  18%  { opacity: 1; }
+  55%  { opacity: 0.85; }
+  100% { transform: translateX(230%) skewX(-20deg); opacity: 0; }
+}
 @keyframes pn-p-rise {
-  from { opacity: 0; transform: translateY(1.5px) scale(0.86); }
+  from { opacity: 0; transform: translateY(2px) scale(0.82); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes pn-word-rise {
   from { opacity: 0; transform: translateY(2px); filter: blur(2px); }
   to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes pn-word-sheen {
+  0%   { background-position: 220% 0; }
+  100% { background-position: -120% 0; }
 }
 
 .pn-logo__mark {
@@ -293,49 +379,180 @@
     transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
     filter 380ms cubic-bezier(0.32, 0.72, 0, 1);
   transform-origin: center;
+  transform-style: preserve-3d;
+  perspective: 280px;
   will-change: transform;
 }
-.pn-logo__svg {
-  filter: drop-shadow(0 4px 12px rgba(90, 46, 220, 0.22));
-  transition: filter 380ms cubic-bezier(0.32, 0.72, 0, 1);
+
+/* The conic-gradient aurora — rx=11/40 → 27.5% radius, inset 4/48 → 8.333% */
+.pn-logo__orb {
+  position: absolute;
+  inset: 8.333%;
+  border-radius: 27.5%;
+  background: conic-gradient(
+    from 140deg,
+    #7B5BFF 0deg,
+    #C24BFF 70deg,
+    #38BDF8 145deg,
+    #FFE49A 188deg,
+    #5A2EDC 240deg,
+    #0A1A3C 310deg,
+    #7B5BFF 360deg
+  );
+  filter: saturate(1.15);
+  transform-origin: center;
+  will-change: transform;
+  pointer-events: none;
 }
 
-/* Each transformable element inside the SVG needs box anchoring */
-.pn-logo__base,
-.pn-logo__p {
+/* Shimmer wipe — masked to the orb's rounded square */
+.pn-logo__shimmer {
+  position: absolute;
+  inset: 8.333%;
+  border-radius: 27.5%;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pn-logo__shimmer::before {
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: 0;
+  width: 45%;
+  height: 160%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%
+  );
+  transform: translateX(-130%) skewX(-20deg);
+  opacity: 0;
+}
+
+.pn-logo__svg {
+  filter: drop-shadow(0 6px 18px rgba(110, 63, 243, 0.32));
+  transition: filter 380ms cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 1;
+}
+
+.pn-logo__base {
   transform-box: fill-box;
   transform-origin: center;
 }
 
-/* Mount timeline (animated variant only) */
-.pn-logo--animated .pn-logo__base {
-  animation: pn-base-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-.pn-logo--animated .pn-logo__p {
-  animation: pn-p-rise 460ms 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-.pn-logo--animated .pn-logo__wordmark {
-  animation: pn-word-rise 540ms 480ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+/* The P — heavy Geist Black type, dead-centered, on the very top layer */
+.pn-logo__p-text {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-style: normal;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  pointer-events: none;
+  transform-origin: center;
+  /* Nudge the cap visually centered — Geist's P sits slightly bottom-heavy */
+  text-indent: -0.02em;
 }
 
-/* Hover interaction — lifts with a deeper violet glow */
+/* Navy text-shadow halo on the aurora variants — keeps the white P readable
+   no matter which color is rotating through the orb behind it. */
+.pn-logo__p-text--lift {
+  text-shadow:
+    0 1px 1.5px rgba(10, 26, 60, 0.45),
+    0 0 6px rgba(10, 26, 60, 0.22);
+  transition: text-shadow 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.pn-logo:hover .pn-logo__p-text--lift,
+.pn-logo:focus-visible .pn-logo__p-text--lift {
+  text-shadow:
+    0 2px 3px rgba(10, 26, 60, 0.6),
+    0 0 9px rgba(10, 26, 60, 0.35);
+}
+
+/* === Mount timeline (animated variant only) ======================= */
+.pn-logo--animated .pn-logo__mark {
+  animation: pn-mark-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.pn-logo--animated .pn-logo__orb {
+  animation:
+    pn-orb-fadein 600ms ease-out both,
+    pn-orb-spin var(--pn-orb-speed, 14s) linear 200ms infinite;
+}
+.pn-logo--animated .pn-logo__shimmer::before {
+  animation: pn-shimmer-sweep 5.5s ease-in-out 1.4s infinite;
+}
+.pn-logo--animated .pn-logo__base {
+  animation: pn-mark-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.pn-logo--animated .pn-logo__p-text {
+  animation: pn-p-rise 460ms 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.pn-logo--animated .pn-logo__wordmark {
+  animation: pn-word-rise 540ms 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* === Wordmark gradient sheen (non-mono only) ====================== */
+.pn-logo__wordmark--sheen {
+  background: linear-gradient(
+    90deg,
+    var(--foreground) 0%,
+    var(--foreground) 38%,
+    color-mix(in oklab, var(--foreground), #6E3FF3 65%) 50%,
+    var(--foreground) 62%,
+    var(--foreground) 100%
+  );
+  background-size: 240% 100%;
+  background-position: 220% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.pn-logo--animated .pn-logo__wordmark--sheen {
+  animation:
+    pn-word-rise 540ms 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both,
+    pn-word-sheen 9s 1.8s ease-in-out infinite;
+}
+
+/* === Hover / focus — 3D tilt, glow up, orb accelerates ============ */
 .pn-logo:hover .pn-logo__mark,
 .pn-logo:focus-visible .pn-logo__mark {
-  transform: translateY(-1px) rotate(-5deg) scale(1.05);
+  transform: translateY(-1px) rotateX(8deg) rotateY(-10deg) scale(1.06);
 }
 .pn-logo:hover .pn-logo__svg,
 .pn-logo:focus-visible .pn-logo__svg {
-  filter: drop-shadow(0 8px 22px rgba(110, 63, 243, 0.45));
+  filter: drop-shadow(0 12px 28px rgba(110, 63, 243, 0.55));
+}
+.pn-logo:hover .pn-logo__orb,
+.pn-logo:focus-visible .pn-logo__orb {
+  --pn-orb-speed: 4.5s;
+  filter: saturate(1.35) brightness(1.08);
 }
 
 /* Active (mousedown) — tactile press */
 .pn-logo:active .pn-logo__mark {
-  transform: translateY(0) rotate(-3deg) scale(0.97);
+  transform: translateY(0) rotateX(3deg) rotateY(-4deg) scale(0.98);
   transition-duration: 90ms;
 }
 
-/* Mono variants drop the violet glow (sits on dark navy / inside PDFs) */
-.pn-logo:has(.pn-logo__base[stroke="#FFFFFF"]) .pn-logo__svg,
-.pn-logo:has(.pn-logo__base[stroke="#0A1A3C"]) .pn-logo__svg {
+/* Mono variants — no orb glow, no shimmer, no sheen */
+.pn-logo:has(.pn-logo__base) .pn-logo__svg {
   filter: none;
+}
+
+/* Respect users who opted out of motion — kill ambient loops only */
+@media (prefers-reduced-motion: reduce) {
+  .pn-logo__orb,
+  .pn-logo--animated .pn-logo__orb,
+  .pn-logo--animated .pn-logo__shimmer::before,
+  .pn-logo--animated .pn-logo__wordmark--sheen {
+    animation: none !important;
+  }
+  .pn-logo__wordmark--sheen {
+    background-position: 50% 0;
+  }
 }

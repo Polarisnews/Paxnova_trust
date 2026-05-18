@@ -56,7 +56,7 @@ export default function ContactPage() {
               <dl className="mt-4 space-y-3 text-sm">
                 <Item icon={Phone} label="Customer service" value="1-800-PAXNOVA-1" />
                 <Item icon={Mail} label="Email" value="hello@paxnovatrust.com" />
-                <Item icon={MapPin} label="Headquarters" value="200 West St, 14th Floor, New York, NY 10282" />
+                <Item icon={MapPin} label="Headquarters" value="1000 N Point St, San Francisco, CA 94109" />
                 <Item icon={Clock} label="Hours" value="Phone: 24/7 · Branches: M-Sat 9-6" />
               </dl>
             </div>

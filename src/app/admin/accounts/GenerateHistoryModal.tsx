@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, Loader2, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { currency } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import {
   generateHistoryAction,
   type GenerateHistoryState,
@@ -19,7 +20,11 @@ const INDUSTRY_OPTIONS = [
   { value: "retail", label: "Retail / e-commerce" },
   { value: "restaurant", label: "Restaurant / hospitality" },
   { value: "tech-services", label: "Technology / SaaS" },
-];
+] as const;
+
+const INDUSTRY_LABEL: Record<string, string> = Object.fromEntries(
+  INDUSTRY_OPTIONS.map((o) => [o.value, o.label]),
+);
 
 const initial: GenerateHistoryState = { ok: false };
 
@@ -46,9 +51,14 @@ export function GenerateHistoryModal({
   const [from, setFrom] = useState(todayIso(-12));
   const [to, setTo] = useState(todayIso(0));
   const [count, setCount] = useState(50);
-  const [industry, setIndustry] = useState(
-    accountType === "business" ? "tech-services" : "personal"
+  // Multi-select industries. Default seeded with one based on account type.
+  const [industries, setIndustries] = useState<Set<string>>(
+    () =>
+      new Set([accountType === "business" ? "tech-services" : "personal"]),
   );
+  const [industryOpen, setIndustryOpen] = useState(false);
+  const industryRef = useRef<HTMLDivElement>(null);
+
   const [style, setStyle] = useState<"business" | "personal">(
     accountType === "business" || accountType === "credit" ? "business" : "personal"
   );
@@ -63,6 +73,50 @@ export function GenerateHistoryModal({
       if (progressRef.current) clearInterval(progressRef.current);
     };
   }, []);
+
+  // Close the industry dropdown when clicking outside its container.
+  useEffect(() => {
+    if (!industryOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (
+        industryRef.current &&
+        !industryRef.current.contains(e.target as Node)
+      ) {
+        setIndustryOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [industryOpen]);
+
+  function toggleIndustry(value: string) {
+    setIndustries((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) {
+        // Don't allow zero — require at least one selected.
+        if (next.size > 1) next.delete(value);
+      } else {
+        next.add(value);
+      }
+      return next;
+    });
+  }
+
+  function selectAllIndustries() {
+    setIndustries(new Set(INDUSTRY_OPTIONS.map((o) => o.value)));
+  }
+  function selectOnly(value: string) {
+    setIndustries(new Set([value]));
+  }
+
+  const industryLabel =
+    industries.size === 0
+      ? "Pick an industry"
+      : industries.size === 1
+        ? INDUSTRY_LABEL[Array.from(industries)[0]] ?? "1 selected"
+        : industries.size === INDUSTRY_OPTIONS.length
+          ? `All ${industries.size} industries`
+          : `${industries.size} industries selected`;
 
   const estDurationMs = useMemo(() => Math.max(800, count * 12), [count]);
 
@@ -84,7 +138,9 @@ export function GenerateHistoryModal({
     fd.set("from", from);
     fd.set("to", to);
     fd.set("count", String(count));
-    fd.set("industry", industry);
+    // Append every selected industry as a separate "industries" entry so the
+    // server can read them via formData.getAll("industries").
+    for (const i of industries) fd.append("industries", i);
     fd.set("style", style);
     fd.set("seed", seed);
 
@@ -188,22 +244,109 @@ export function GenerateHistoryModal({
                 to the final running total.
               </p>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="industry" className="text-xs font-medium">
-                Industry
+            <div className="space-y-1.5" ref={industryRef}>
+              <Label className="text-xs font-medium">
+                Industries
+                <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                  ({industries.size} selected)
+                </span>
               </Label>
-              <select
-                id="industry"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm"
-              >
-                {INDUSTRY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIndustryOpen((v) => !v)}
+                  aria-haspopup="listbox"
+                  aria-expanded={industryOpen}
+                  className={cn(
+                    "flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-background px-3 text-left text-sm transition",
+                    industryOpen
+                      ? "border-violet-500 ring-2 ring-violet-500/30"
+                      : "border-border hover:border-violet-500/40",
+                    state.fieldErrors?.industries && "border-danger",
+                  )}
+                >
+                  <span className="truncate">{industryLabel}</span>
+                  <ChevronDown
+                    className={cn(
+                      "size-4 shrink-0 text-muted-foreground transition-transform",
+                      industryOpen && "rotate-180",
+                    )}
+                  />
+                </button>
+                {industryOpen && (
+                  <div
+                    role="listbox"
+                    aria-multiselectable
+                    className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-elev"
+                  >
+                    <div className="flex items-center justify-between border-b border-border bg-muted/30 px-3 py-2 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={selectAllIndustries}
+                        className="font-semibold text-violet-500 hover:text-violet-600"
+                      >
+                        Select all
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          selectOnly(
+                            accountType === "business"
+                              ? "tech-services"
+                              : "personal",
+                          )
+                        }
+                        className="font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                    <ul className="max-h-60 overflow-y-auto py-1">
+                      {INDUSTRY_OPTIONS.map((o) => {
+                        const checked = industries.has(o.value);
+                        return (
+                          <li key={o.value}>
+                            <label
+                              className={cn(
+                                "flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm transition hover:bg-muted",
+                                checked && "bg-violet-500/8",
+                              )}
+                            >
+                              <span
+                                aria-hidden
+                                className={cn(
+                                  "inline-flex size-4 shrink-0 items-center justify-center rounded border transition",
+                                  checked
+                                    ? "border-violet-500 bg-violet-500 text-white"
+                                    : "border-border bg-background",
+                                )}
+                              >
+                                {checked && <Check className="size-3" />}
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleIndustry(o.value)}
+                                className="sr-only"
+                              />
+                              <span className="flex-1">{o.label}</span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              {state.fieldErrors?.industries && (
+                <p className="text-xs text-danger">
+                  {state.fieldErrors.industries}
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Count is split evenly across selected industries. Pick 1–
+                {INDUSTRY_OPTIONS.length}.
+              </p>
             </div>
           </div>
 
@@ -276,6 +419,21 @@ export function GenerateHistoryModal({
                 <CheckCircle2 className="size-4" />
                 Generated {state.summary.generated} transactions
               </p>
+              {state.perIndustry && state.perIndustry.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {state.perIndustry.map((p) => (
+                    <span
+                      key={p.industry}
+                      className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-300"
+                    >
+                      {INDUSTRY_LABEL[p.industry] ?? p.industry}
+                      <span className="rounded-full bg-white/40 px-1 tabular-nums dark:bg-white/10">
+                        {p.count}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )}
               <dl className="mt-2 grid gap-1 text-foreground">
                 <Row
                   label="Total credits"

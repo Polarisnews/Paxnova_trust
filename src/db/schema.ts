@@ -408,10 +408,49 @@ export const documents = sqliteTable("documents", {
 
 export const contactMessages = sqliteTable("contact_messages", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  // Author — `userId` is set when the form was submitted by a signed-in
+  // member, so admins can pivot the thread back to the user's account.
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   email: text("email").notNull(),
   topic: text("topic").notNull(),
   message: text("message").notNull(),
+  // Workflow state — drives the admin inbox filters + badge counts.
+  status: text("status", {
+    enum: ["open", "in_progress", "responded", "closed"],
+  })
+    .notNull()
+    .default("open"),
+  // Admin who claimed / replied first. Lets admins divide workload.
+  assignedTo: integer("assigned_to").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  // Bumped on every reply so the inbox can sort by most-recent activity.
+  lastActivityAt: integer("last_activity_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// One row per reply on a contact thread. Today admins reply; the schema
+// also supports user-side replies (when they reply to the email we send)
+// so we can grow into a two-way thread without a migration.
+export const contactReplies = sqliteTable("contact_replies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  threadId: integer("thread_id")
+    .notNull()
+    .references(() => contactMessages.id, { onDelete: "cascade" }),
+  authorId: integer("author_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  authorRole: text("author_role", { enum: ["admin", "user"] }).notNull(),
+  body: text("body").notNull(),
+  // When (and to which address) the system emailed the user. Null for
+  // user-side incoming messages.
+  emailedTo: text("emailed_to"),
+  emailedAt: integer("emailed_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -540,6 +579,7 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Account = typeof accounts.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
+export type NewTransaction = typeof transactions.$inferInsert;
 export type Payee = typeof payees.$inferSelect;
 export type BillPayment = typeof billPayments.$inferSelect;
 export type Card = typeof cards.$inferSelect;
@@ -559,3 +599,7 @@ export type NewPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 export type CardApplication = typeof cardApplications.$inferSelect;
 export type NewCardApplication = typeof cardApplications.$inferInsert;
 export type NewCard = typeof cards.$inferInsert;
+export type ContactMessage = typeof contactMessages.$inferSelect;
+export type NewContactMessage = typeof contactMessages.$inferInsert;
+export type ContactReply = typeof contactReplies.$inferSelect;
+export type NewContactReply = typeof contactReplies.$inferInsert;

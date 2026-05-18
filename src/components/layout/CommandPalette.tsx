@@ -16,7 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "cmdk";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type CmdItem = {
@@ -68,6 +68,9 @@ export function CommandPalette() {
         e.preventDefault();
         setOpen((v) => !v);
       }
+      if (open && e.key === "Escape") {
+        setOpen(false);
+      }
     };
     const onOpen = () => setOpen(true);
     window.addEventListener("keydown", onKey);
@@ -76,29 +79,65 @@ export function CommandPalette() {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("open-command-palette", onOpen as EventListener);
     };
-  }, []);
+  }, [open]);
+
+  // Lock body scroll while open — matches the MobileDrawer behavior.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   const go = (href: string) => {
     setOpen(false);
     router.push(href);
   };
 
+  // Plain-React modal — no base-ui Dialog. Always rendered; opacity +
+  // pointer-events control visibility so opens stay smooth on mobile.
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent
-        className="max-w-xl gap-0 overflow-hidden p-0"
-        showCloseButton={false}
+    <>
+      <button
+        aria-hidden
+        tabIndex={-1}
+        onClick={() => setOpen(false)}
+        className={cn(
+          "fixed inset-0 z-[80] cursor-default bg-black/35 backdrop-blur-sm transition-opacity duration-150",
+          open
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0",
+        )}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        className={cn(
+          "fixed left-1/2 top-[14vh] z-[90] w-[min(640px,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-card shadow-elev transition-all duration-150",
+          open
+            ? "pointer-events-auto translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-2 opacity-0",
+        )}
       >
-        <DialogTitle className="sr-only">Command palette</DialogTitle>
-        <DialogDescription className="sr-only">
-          Search and navigate Paxnova Trust Bank.
-        </DialogDescription>
+        {/* Mobile close button */}
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Close search"
+          className="absolute right-2 top-2 inline-flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground sm:hidden"
+        >
+          <X className="size-4" />
+        </button>
         <Command label="Command palette" className="bg-card">
           <CommandInput
+            autoFocus={open}
             placeholder="Search Paxnova Trust…"
-            className="w-full border-b border-border bg-transparent px-4 py-3 text-base outline-none placeholder:text-muted-foreground"
+            className="w-full border-b border-border bg-transparent px-4 py-3 pr-10 text-base outline-none placeholder:text-muted-foreground"
           />
-          <CommandList className="max-h-[420px] overflow-auto p-2">
+          <CommandList className="max-h-[60dvh] overflow-auto p-2 sm:max-h-[420px]">
             <CommandEmpty className="p-6 text-center text-sm text-muted-foreground">
               No results found.
             </CommandEmpty>
@@ -116,8 +155,8 @@ export function CommandPalette() {
                       value={`${group.heading} ${entry.label}`}
                       onSelect={() => go(entry.href)}
                       className={cn(
-                        "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2 text-sm",
-                        "data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
+                        "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2.5 text-sm",
+                        "data-[selected=true]:bg-muted data-[selected=true]:text-foreground",
                       )}
                     >
                       <Icon className="size-4 text-muted-foreground" />
@@ -128,14 +167,14 @@ export function CommandPalette() {
               </CommandGroup>
             ))}
           </CommandList>
-          <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground">
+          <div className="hidden items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground sm:flex">
             <span>Type to search, ↑↓ to navigate, ↵ to select</span>
-            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-mono">
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
               Esc
             </kbd>
           </div>
         </Command>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </>
   );
 }

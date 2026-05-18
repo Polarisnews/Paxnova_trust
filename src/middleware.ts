@@ -74,7 +74,62 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next({
     request: { headers: requestHeaders },
   });
+
+  // ── Security headers (defense-in-depth) ─────────────────────────────
   response.headers.set("Content-Security-Policy", csp);
+
+  if (isProd) {
+    // Force HTTPS for one year, all subdomains. Submit to the HSTS preload
+    // list once the domain has been TLS-only for a few weeks.
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload",
+    );
+  }
+
+  // Stop browsers from MIME-sniffing a non-declared content type.
+  response.headers.set("X-Content-Type-Options", "nosniff");
+
+  // Legacy clickjacking backstop — CSP `frame-ancestors 'none'` is the
+  // active guard for modern browsers; this covers very old clients.
+  response.headers.set("X-Frame-Options", "DENY");
+
+  // Trim referrer leakage to the bare origin on cross-origin navigations.
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  // Disable every powerful API we don't intentionally use.
+  response.headers.set(
+    "Permissions-Policy",
+    [
+      "accelerometer=()",
+      "autoplay=()",
+      "camera=()",
+      "display-capture=()",
+      "encrypted-media=()",
+      "fullscreen=(self)",
+      "geolocation=()",
+      "gyroscope=()",
+      "magnetometer=()",
+      "microphone=()",
+      "midi=()",
+      "payment=()",
+      "picture-in-picture=()",
+      "publickey-credentials-get=(self)",
+      "screen-wake-lock=()",
+      "sync-xhr=()",
+      "usb=()",
+      "xr-spatial-tracking=()",
+    ].join(", "),
+  );
+
+  // Remove well-known fingerprinting headers.
+  response.headers.delete("X-Powered-By");
+
+  // Cross-origin isolation — defense against side-channel attacks. Set
+  // to "same-origin" here; the relaxed "credentialless" / "unsafe-none"
+  // is only needed if you embed cross-origin iframes.
+  response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  response.headers.set("Cross-Origin-Resource-Policy", "same-origin");
 
   return response;
 }
