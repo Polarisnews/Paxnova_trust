@@ -833,6 +833,71 @@ export async function setUserStatusAction(
   return { ok: true, message: `User ${status}.` };
 }
 
+const adminUsernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3, "Username must be at least 3 characters")
+  .max(24, "Username must be 24 characters or less")
+  .regex(/^[a-z0-9._-]+$/, "Letters, numbers, dot, dash, underscore only");
+
+const adminPasswordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must include an uppercase letter")
+  .regex(/[0-9]/, "Password must include a number");
+
+export async function setUserCredentialsAction(
+  userId: number,
+  raw: { username?: string; password?: string }
+): Promise<AdminState> {
+  await requireAdmin();
+
+  const updates: { username?: string; passwordHash?: string } = {};
+
+  // Username is optional — only update if a non-empty value was supplied.
+  if (raw.username && raw.username.trim().length > 0) {
+    const parsed = adminUsernameSchema.safeParse(raw.username);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0].message };
+    }
+    const existing = db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, parsed.data))
+      .get();
+    if (existing && existing.id !== userId) {
+      return { ok: false, message: "That username is already in use." };
+    }
+    updates.username = parsed.data;
+  }
+
+  // Password is optional too — only update if a non-empty value was supplied.
+  if (raw.password && raw.password.length > 0) {
+    const parsed = adminPasswordSchema.safeParse(raw.password);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0].message };
+    }
+    updates.passwordHash = await hashPassword(parsed.data);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return {
+      ok: false,
+      message: "Provide a new username, a new password, or both.",
+    };
+  }
+
+  db.update(users).set(updates).where(eq(users.id, userId)).run();
+  revalidatePath("/admin/users");
+  return {
+    ok: true,
+    message: updates.passwordHash
+      ? "Login updated — share the new password with the user securely."
+      : "Username updated.",
+  };
+}
+
 export async function adminFreezeCardAction(cardId: number): Promise<AdminState> {
   await requireAdmin();
   const card = db.select().from(cards).where(eq(cards.id, cardId)).get();

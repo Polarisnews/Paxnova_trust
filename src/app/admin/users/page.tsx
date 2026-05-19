@@ -68,6 +68,8 @@ export default async function AdminUsers() {
                     userId={u.id}
                     role={u.role}
                     status={u.status}
+                    username={u.username}
+                    fullName={`${u.firstName} ${u.lastName}`.trim()}
                   />
                 </td>
               </tr>

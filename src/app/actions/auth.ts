@@ -725,12 +725,23 @@ export async function resetPasswordAction(
 export async function logoutAction(): Promise<void> {
   const session = await getSession();
   session.destroy();
-  // Belt-and-braces: explicitly delete the session cookie so it's guaranteed
-  // to land in the redirect response. iron-session's own write sometimes
-  // misses the response when `redirect` short-circuits the pipeline, leaving
-  // the user with a stale cookie and a second click required.
+  // The __Host- prefix used in production REQUIRES the delete cookie to
+  // also carry Secure=true and Path=/. cookieStore.delete(name) omits
+  // those attributes, so the browser rejects the deletion and the session
+  // persists. Setting an expired cookie with the full original options
+  // ensures the browser actually drops it.
+  const isProd = process.env.NODE_ENV === "production";
   const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE_NAME);
+  cookieStore.set({
+    name: SESSION_COOKIE_NAME,
+    value: "",
+    maxAge: 0,
+    expires: new Date(0),
+    path: "/",
+    secure: isProd,
+    httpOnly: true,
+    sameSite: isProd ? "strict" : "lax",
+  });
   revalidatePath("/", "layout");
   redirect("/");
 }
