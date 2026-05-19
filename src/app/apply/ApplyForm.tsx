@@ -268,6 +268,11 @@ export function ApplyForm({
         if (values[k] !== "on") errs[k] = "Required";
       }
       if (!isLoggedIn) {
+        const u = (values.username ?? "").trim().toLowerCase();
+        if (u.length < 3) errs.username = "At least 3 characters";
+        else if (u.length > 24) errs.username = "24 characters or less";
+        else if (!/^[a-z0-9._-]+$/.test(u))
+          errs.username = "Letters, numbers, dot, dash, underscore only";
         const p = values.password ?? "";
         if (p.length < 8) errs.password = "At least 8 characters";
         else if (!/[A-Z]/.test(p)) errs.password = "Include an uppercase letter";
@@ -2117,17 +2122,47 @@ function DisclosuresStep({
   return (
     <div className={hidden ? "hidden" : "space-y-4"}>
       {!isLoggedIn && (
-        <div className="space-y-2 rounded-xl border border-violet-500/30 bg-violet-500/5 p-4">
+        <div className="space-y-3 rounded-xl border border-violet-500/30 bg-violet-500/5 p-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-violet-600">
               Create your login
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              We'll create your Paxnova Trust account so you can sign in and
-              track your application status. The account opens after our
-              compliance team reviews your documents (usually one business
-              day).
+              Pick a username and password so you can sign in and track your
+              application status. The account opens after our compliance team
+              reviews your documents (usually one business day).
             </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="username" className="text-xs font-medium">
+              Username<span className="ml-0.5 text-danger">*</span>
+            </Label>
+            <Input
+              id="username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              required
+              minLength={3}
+              maxLength={24}
+              value={values.username ?? ""}
+              onChange={(e) =>
+                setValue(
+                  "username",
+                  e.target.value.toLowerCase().replace(/\s+/g, ""),
+                )
+              }
+              placeholder="3–24 chars · letters, numbers, dot, dash, underscore"
+              aria-invalid={Boolean(errors.username)}
+              className="h-10"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              You&apos;ll use this to sign in. Your email is kept on file for
+              recovery and notifications.
+            </p>
+            {errors.username && (
+              <p className="text-xs text-danger">{errors.username}</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password" className="text-xs font-medium">

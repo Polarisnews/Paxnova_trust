@@ -22,6 +22,14 @@ const passwordSchema = z
   .regex(/[A-Z]/, "Include an uppercase letter")
   .regex(/[0-9]/, "Include a number");
 
+const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3, "At least 3 characters")
+  .max(24, "24 characters or less")
+  .regex(/^[a-z0-9._-]+$/, "Letters, numbers, dot, dash, underscore only");
+
 export type ApplyState = {
   ok: boolean;
   message?: string;
@@ -376,6 +384,16 @@ export async function applyAction(
   // "register + apply" and provision a user with the KYC the guest provided.
   let applicantUserId: number | null = currentUser?.id ?? null;
   if (!currentUser) {
+    const usernameParse = usernameSchema.safeParse(raw.username);
+    if (!usernameParse.success) {
+      return {
+        ok: false,
+        message: "Pick a username before submitting.",
+        fieldErrors: { username: usernameParse.error.issues[0].message },
+      };
+    }
+    const username = usernameParse.data;
+
     const passwordParse = passwordSchema.safeParse(raw.password);
     if (!passwordParse.success) {
       return {
@@ -386,17 +404,30 @@ export async function applyAction(
     }
 
     const normalizedEmail = kyc.email.toLowerCase().trim();
-    const existing = db
+    const existingEmail = db
       .select()
       .from(users)
       .where(eq(users.email, normalizedEmail))
       .get();
-    if (existing) {
+    if (existingEmail) {
       return {
         ok: false,
         message:
           "An account with that email already exists. Please sign in and try again.",
         fieldErrors: { email: "Email already in use" },
+      };
+    }
+
+    const existingUsername = db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .get();
+    if (existingUsername) {
+      return {
+        ok: false,
+        message: "That username is taken. Try a different one.",
+        fieldErrors: { username: "Username already in use" },
       };
     }
 
@@ -407,6 +438,7 @@ export async function applyAction(
     const [created] = db
       .insert(users)
       .values({
+        username,
         email: normalizedEmail,
         passwordHash,
         firstName: kyc.firstName,
